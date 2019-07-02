@@ -4,7 +4,7 @@ import numpy as np
 
 from tvb_utils.log_error_utils import raise_value_error, initialize_logger
 from tvb_utils.data_structures_utils import reg_dict, formal_repr, sort_dict, ensure_list
-from tvb_head.model.virtual_brain.sensors import Sensors, SensorTypes
+from tvb_head.model.sensors import Sensors, SensorTypes
 
 
 class Head(object):
