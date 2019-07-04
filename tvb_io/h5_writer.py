@@ -8,7 +8,7 @@ from tvb_utils.file_utils import change_filename_or_overwrite, write_metadata
 from tvb_head.model.connectivity import ConnectivityH5Field
 from tvb_head.model.sensors import SensorsH5Field, SensorTypes, Sensors
 from tvb_head.model.surface import SurfaceH5Field, Surface
-from tvb_timeseries.timeseries import Timeseries
+from tvb_timeseries.model.timeseries4d import Timeseries4D
 from tvb_io.h5_writer_base import H5WriterBase
 
 from tvb.datatypes.projections import ProjectionMatrix
@@ -253,7 +253,7 @@ class H5Writer(H5WriterBase):
                                 KEY_START: 0.0}, h5_file, KEY_DATE, KEY_VERSION, "/data")
             else:
                 raise_value_error("Invalid TS data. 2D (time, nodes) numpy.ndarray of floats expected")
-        elif isinstance(raw_data, Timeseries):
+        elif isinstance(raw_data, Timeseries4D):
             if len(raw_data.shape) == 4 and str(raw_data.data.dtype)[0] == "f":
                 h5_file.create_dataset("/data", data=raw_data.data)
                 h5_file.create_dataset("/time", data=raw_data.time)

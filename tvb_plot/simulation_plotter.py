@@ -4,10 +4,6 @@ from tvb_config.config import FiguresConfig
 import matplotlib
 matplotlib.use(FiguresConfig().MATPLOTLIB_BACKEND)
 
-import numpy
-
-from tvb_nest.tvb_models.reduced_wong_wang_exc_io_inh_i import ReducedWongWangExcIOInhI
-from tvb_timeseries.timeseries import TimeseriesDimensions, PossibleVariables
 from tvb_plot.timeseries_plotter import TimeseriesPlotter
 
 
@@ -34,7 +30,7 @@ class SimulationPlotter(TimeseriesPlotter):
     #     if len(title_prefix) > 0:
     #         title_prefix = title_prefix + ", " + model._ui_name + ": "
     #     region_labels = timeseries.space_labels
-    #     state_variables = timeseries.dimension_labels[TimeseriesDimensions.VARIABLES.value]
+    #     state_variables = timeseries.dimension_labels[Timeseries4dDimensions.VARIABLES.value]
     #     source_ts = timeseries.get_source()
     #     start_plot = int(numpy.round(0.01 * source_ts.data.shape[0]))
     #     figs.append(self.plot_raster({'source(t)': source_ts.squeezed[start_plot:, :]},

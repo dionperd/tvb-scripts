@@ -5,8 +5,10 @@ from copy import deepcopy
 from tvb_utils.log_error_utils import initialize_logger
 from tvb_utils.data_structures_utils import monopolar_to_bipolar
 
+from tvb.datatypes.time_series import *
 
-class TimeseriesDimensions(Enum):
+
+class Timeseries4dDimensions(Enum):
     TIME = "time"
     SPACE = "space"
     VARIABLES = "variables"
@@ -21,11 +23,11 @@ class PossibleVariables(Enum):
     SEEG = "seeg"
 
 
-class Timeseries(object):
+class Timeseries4D(object):
 
     logger = initialize_logger(__name__)
 
-    dimensions = TimeseriesDimensions
+    dimensions = Timeseries4dDimensions
 
     # dimension_labels = {"space": numpy.array([]), "variables": numpy.array([])}
 
@@ -75,11 +77,11 @@ class Timeseries(object):
 
     @property
     def space_labels(self):
-        return self.dimension_labels.get(TimeseriesDimensions.SPACE.value, numpy.array([]))
+        return self.dimension_labels.get(Timeseries4dDimensions.SPACE.value, numpy.array([]))
 
     @property
     def variables_labels(self):
-        return self.dimension_labels.get(TimeseriesDimensions.VARIABLES.value, numpy.array([]))
+        return self.dimension_labels.get(Timeseries4dDimensions.VARIABLES.value, numpy.array([]))
 
     @property
     def time_end(self):
@@ -119,14 +121,14 @@ class Timeseries(object):
 
     def _get_index_of_state_variable(self, sv_label):
         try:
-            sv_index = numpy.where(self.dimension_labels[TimeseriesDimensions.VARIABLES.value] == sv_label)[0][0]
+            sv_index = numpy.where(self.dimension_labels[Timeseries4dDimensions.VARIABLES.value] == sv_label)[0][0]
         except KeyError:
             self.logger.error("There are no state variables defined for this instance. Its shape is: %s",
                               self.data.shape)
             raise
         except IndexError:
             self.logger.error("Cannot access index of state variable label: %s. Existing state variables: %s" % (
-                sv_label, self.dimension_labels[TimeseriesDimensions.VARIABLES.value]))
+                sv_label, self.dimension_labels[Timeseries4dDimensions.VARIABLES.value]))
             raise
         return sv_index
 
@@ -140,10 +142,10 @@ class Timeseries(object):
         list_of_indices_for_labels = []
         for label in list_of_labels:
             try:
-                space_index = numpy.where(self.dimension_labels[TimeseriesDimensions.SPACE.value] == label)[0][0]
+                space_index = numpy.where(self.dimension_labels[Timeseries4dDimensions.SPACE.value] == label)[0][0]
             except ValueError:
                 self.logger.error("Cannot access index of space label: %s. Existing space labels: %s" % (
-                    label, self.dimension_labels[TimeseriesDimensions.SPACE.value]))
+                    label, self.dimension_labels[Timeseries4dDimensions.SPACE.value]))
                 raise
             list_of_indices_for_labels.append(space_index)
         return list_of_indices_for_labels
@@ -156,14 +158,14 @@ class Timeseries(object):
 
     def __getattr__(self, attr_name):
         state_variables_keys = []
-        if TimeseriesDimensions.VARIABLES.value in self.dimension_labels.keys():
-            state_variables_keys = self.dimension_labels[TimeseriesDimensions.VARIABLES.value]
-            if attr_name in self.dimension_labels[TimeseriesDimensions.VARIABLES.value]:
+        if Timeseries4dDimensions.VARIABLES.value in self.dimension_labels.keys():
+            state_variables_keys = self.dimension_labels[Timeseries4dDimensions.VARIABLES.value]
+            if attr_name in self.dimension_labels[Timeseries4dDimensions.VARIABLES.value]:
                 return self.get_state_variable(attr_name)
         space_keys = []
-        if (TimeseriesDimensions.SPACE.value in self.dimension_labels.keys()):
-            space_keys = self.dimension_labels[TimeseriesDimensions.SPACE.value]
-            if attr_name in self.dimension_labels[TimeseriesDimensions.SPACE.value]:
+        if (Timeseries4dDimensions.SPACE.value in self.dimension_labels.keys()):
+            space_keys = self.dimension_labels[Timeseries4dDimensions.SPACE.value]
+            if attr_name in self.dimension_labels[Timeseries4dDimensions.SPACE.value]:
                 return self.get_subspace_by_labels([attr_name])
         # Hack to avoid stupid error messages when searching for __ attributes in numpy.array() call...
         # TODO: something better? Maybe not needed if we never do something like numpy.array(timeseries)
@@ -190,7 +192,7 @@ class Timeseries(object):
     def get_state_variable(self, sv_label):
         sv_data = self.data[:, :, self._get_index_of_state_variable(sv_label), :]
         subspace_dimension_labels = deepcopy(self.dimension_labels)
-        subspace_dimension_labels[TimeseriesDimensions.VARIABLES.value] = numpy.array([sv_label])
+        subspace_dimension_labels[Timeseries4dDimensions.VARIABLES.value] = numpy.array([sv_label])
         if sv_data.ndim == 3:
             sv_data = numpy.expand_dims(sv_data, 2)
         return self.__class__(sv_data, subspace_dimension_labels,
@@ -200,7 +202,7 @@ class Timeseries(object):
         list_of_indices_for_labels = self._get_indices_for_labels(list_of_labels)
         subspace_data = self.data[:, list_of_indices_for_labels, :, :]
         subspace_dimension_labels = deepcopy(self.dimension_labels)
-        subspace_dimension_labels[TimeseriesDimensions.SPACE.value] = numpy.array(list_of_labels)
+        subspace_dimension_labels[Timeseries4dDimensions.SPACE.value] = numpy.array(list_of_labels)
         if subspace_data.ndim == 3:
             subspace_data = numpy.expand_dims(subspace_data, 1)
         return self.__class__(subspace_data, subspace_dimension_labels, self.time_start, self.time_step, self.time_unit)
@@ -209,8 +211,8 @@ class Timeseries(object):
         self._check_space_indices(list_of_index)
         subspace_data = self.data[:, list_of_index, :, :]
         subspace_dimension_labels = deepcopy(self.dimension_labels)
-        subspace_dimension_labels[TimeseriesDimensions.SPACE.value] = \
-            numpy.array(self.dimension_labels[TimeseriesDimensions.SPACE.value])[list_of_index]
+        subspace_dimension_labels[Timeseries4dDimensions.SPACE.value] = \
+            numpy.array(self.dimension_labels[Timeseries4dDimensions.SPACE.value])[list_of_index]
         if subspace_data.ndim == 3:
             subspace_data = numpy.expand_dims(subspace_data, 1)
         return self.__class__(subspace_data, subspace_dimension_labels, self.time_start, self.time_step, self.time_unit)
@@ -254,10 +256,10 @@ class Timeseries(object):
         pass
 
     def get_source(self):
-        if TimeseriesDimensions.VARIABLES.value not in self.dimension_labels.keys():
+        if Timeseries4dDimensions.VARIABLES.value not in self.dimension_labels.keys():
             self.logger.error("No state variables are defined for this instance!")
             raise ValueError
-        if PossibleVariables.SOURCE.value in self.dimension_labels[TimeseriesDimensions.VARIABLES.value]:
+        if PossibleVariables.SOURCE.value in self.dimension_labels[Timeseries4dDimensions.VARIABLES.value]:
             return self.get_state_variable(PossibleVariables.SOURCE.value)
 
     def get_bipolar(self):
@@ -266,4 +268,3 @@ class Timeseries(object):
         bipolar_dimension_labels = deepcopy(self.dimension_labels)
         bipolar_dimension_labels["space"] = numpy.array(bipolar_labels)
         return self.__class__(data, bipolar_dimension_labels, self.time_start, self.time_step, self.time_unit)
-
