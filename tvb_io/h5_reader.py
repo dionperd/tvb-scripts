@@ -3,16 +3,22 @@
 import os
 import h5py
 from collections import OrderedDict
+
 import numpy
-from tvb_fit.base.datatypes.dot_dicts import DictDot, OrderedDictDot
-from tvb_utils.log_error_utils import initialize_logger
+
+from tvb_utils.log_error_utils import initialize_logger, raise_value_error
+from tvb_utils.datatypes.dot_dicts import DictDot, OrderedDictDot
 from tvb_utils.data_structures_utils import isequal_string
 from tvb_head.model.connectivity import Connectivity, ConnectivityH5Field
 from tvb_head.model.head import Head
-from tvb_head.model.sensors import Sensors, SensorTypes, SensorsH5Field
-from tvb_head.model.surface import Surface, SurfaceH5Field
-from tvb_fit.base.model.timeseries import TimeseriesDimensions, Timeseries
+from tvb_head.model.sensors import \
+    Sensors, SensorTypesToClassesDict, SensorsH5Field, SensorTypesToProjectionDict
+from tvb_head.model.surface import CorticalSurface, SubcorticalSurface, SurfaceH5Field
+from tvb_timeseries.timeseries import TimeseriesDimensions, Timeseries
 from tvb_io.h5_writer import H5Writer
+
+from tvb.datatypes import region_mapping, structural
+from tvb.datatypes.projections import ProjectionMatrix
 
 
 H5_TYPE_ATTRIBUTE = H5Writer().H5_TYPE_ATTRIBUTE
@@ -39,23 +45,30 @@ class H5Reader(object):
         :return: Connectivity object
         """
         self.logger.info("Starting to read a Connectivity from: %s" % path)
-        h5_file = h5py.File(path, 'r', libver='latest')
+        if os.path.isfile(path):
+            h5_file = h5py.File(path, 'r', libver='latest')
 
-        weights = h5_file['/' + ConnectivityH5Field.WEIGHTS][()]
-        tract_lengths = h5_file['/' + ConnectivityH5Field.TRACTS][()]
-        region_centres = h5_file['/' + ConnectivityH5Field.CENTERS][()]
-        region_labels = h5_file['/' + ConnectivityH5Field.REGION_LABELS][()]
-        orientations = h5_file['/' + ConnectivityH5Field.ORIENTATIONS][()]
-        hemispheres = h5_file['/' + ConnectivityH5Field.HEMISPHERES][()]
+            weights = h5_file['/' + ConnectivityH5Field.WEIGHTS][()]
+            tract_lengths = h5_file['/' + ConnectivityH5Field.TRACTS][()]
+            region_centres = h5_file['/' + ConnectivityH5Field.CENTERS][()]
+            region_labels = h5_file['/' + ConnectivityH5Field.REGION_LABELS][()]
+            orientations = h5_file['/' + ConnectivityH5Field.ORIENTATIONS][()]
+            hemispheres = h5_file['/' + ConnectivityH5Field.HEMISPHERES][()]
+            areas = h5_file['/' + ConnectivityH5Field.AREAS][()]
 
-        h5_file.close()
+            h5_file.close()
 
-        conn = Connectivity(path, weights, tract_lengths, region_labels, region_centres, hemispheres, orientations)
-        self.logger.info("Successfully read connectvity from: %s" % path)
+            conn = Connectivity(file_path=path, weights=weights, tract_lengths=tract_lengths,
+                                region_labels=region_labels, region_centres=region_centres,
+                                hemispheres=hemispheres, orientations=orientations, areas=areas)
+            conn.configure()
+            self.logger.info("Successfully read connectvity from: %s" % path)
 
-        return conn
+            return conn
+        else:
+            raise_value_error(("\n No Connectivity file found at path %s!" % str(path)))
 
-    def read_surface(self, path):
+    def read_surface(self, path, surface_class):
         """
         :param path: Path towards a custom Surface H5 file
         :return: Surface object
@@ -70,10 +83,13 @@ class H5Reader(object):
         vertices = h5_file['/' + SurfaceH5Field.VERTICES][()]
         triangles = h5_file['/' + SurfaceH5Field.TRIANGLES][()]
         vertex_normals = h5_file['/' + SurfaceH5Field.VERTEX_NORMALS][()]
-
+        triangle_normals = h5_file['/' + SurfaceH5Field.TRIANGLE_NORMALS][()]
         h5_file.close()
 
-        surface = Surface(vertices, triangles, vertex_normals)
+        surface = surface_class(file_path=path, vertices=vertices, triangles=triangles,
+                                vertex_normals=vertex_normals, triangle_normals=triangle_normals)
+        surface.configure()
+
         self.logger.info("Successfully read surface from: %s" % path)
 
         return surface
@@ -83,9 +99,7 @@ class H5Reader(object):
         :param path: Path towards a custom head folder
         :return: 3 lists with all sensors from Path by type
         """
-        sensors_seeg = OrderedDict()
-        sensors_eeg = OrderedDict()
-        sensors_meg = OrderedDict()
+        sensors = OrderedDict()
 
         self.logger.info("Starting to read all Sensors from: %s" % path)
 
@@ -95,49 +109,53 @@ class H5Reader(object):
             if not str_head_file.startswith(self.sensors_filename_prefix):
                 continue
             name = str_head_file.split(".")[0]
-            type = str_head_file[len(self.sensors_filename_prefix):str_head_file.index(self.sensors_filename_separator)]
-            if type.upper() == SensorTypes.TYPE_SEEG.value:
-                sensors_seeg[name] = \
-                    self.read_sensors_of_type(os.path.join(path, head_file), SensorTypes.TYPE_SEEG, name)
-            if type.upper() == SensorTypes.TYPE_EEG.value:
-                sensors_eeg[name] = \
-                    self.read_sensors_of_type(os.path.join(path, head_file), SensorTypes.TYPE_EEG, name)
-            if type.upper() == SensorTypes.TYPE_MEG.value:
-                sensors_meg[name] = \
-                    self.read_sensors_of_type(os.path.join(path, head_file), SensorTypes.TYPE_MEG, name)
+            sensor, projection = \
+                self.read_sensors_of_type(os.path.join(path, head_file), name)
+            sensors_set = sensors.get(sensor.sensors_type, OrderedDict())
+            sensors_set.update({sensor: projection})
+            sensors[sensor.sensors_type] = sensors_set
 
         self.logger.info("Successfuly read all sensors from: %s" % path)
 
-        return sensors_seeg, sensors_eeg, sensors_meg
+        return sensors
 
-    def read_sensors_of_type(self, sensors_file, type, name):
+    def read_sensors_of_type(self, sensors_file, name):
         """
         :param
             sensors_file: Path towards a custom Sensors H5 file
-            type: Senors type
+            s_type: Senors s_type
         :return: Sensors object
         """
         if not os.path.exists(sensors_file):
             self.logger.warning("Senors file %s does not exist!" % sensors_file)
             return []
 
-        self.logger.info("Starting to read sensors of type %s from: %s" % (type.value, sensors_file))
+        self.logger.info("Starting to read sensors of from: %s" % sensors_file)
         h5_file = h5py.File(sensors_file, 'r', libver='latest')
 
         labels = h5_file['/' + SensorsH5Field.LABELS][()]
         locations = h5_file['/' + SensorsH5Field.LOCATIONS][()]
+        orientations = h5_file['/' + SensorsH5Field.ORIENTATIONS][()]
+        name = h5_file.attrs.get("name", name)
+        s_type = h5_file.attrs["Sensors_subtype"]
 
-        if '/' + SensorsH5Field.GAIN_MATRIX in h5_file:
-            gain_matrix = h5_file['/' + SensorsH5Field.GAIN_MATRIX][()]
+        if '/' + SensorsH5Field.PROJECTION_MATRIX in h5_file:
+            proj_matrix = h5_file['/' + SensorsH5Field.PROJECTION_MATRIX][()]
+            projection = SensorTypesToProjectionDict.get(s_type, ProjectionMatrix)()
+            projection.projection_data = proj_matrix
         else:
-            gain_matrix = None
+            projection = None
 
         h5_file.close()
 
-        sensors = Sensors(labels, locations, gain_matrix=gain_matrix, s_type=type, name=name)
+        sensors = \
+            SensorTypesToClassesDict.get(s_type, Sensors)(file_path=sensors_file, name=name,
+                                                          labels=labels, locations=locations,
+                                                          orientations=orientations)
+        sensors.configure()
         self.logger.info("Successfully read sensors from: %s" % sensors_file)
 
-        return sensors
+        return sensors, projection
 
     def read_volume_mapping(self, path):
         """
@@ -146,17 +164,18 @@ class H5Reader(object):
         """
         if not os.path.isfile(path):
             self.logger.warning("VolumeMapping file %s does not exist" % path)
-            return numpy.array([])
+            return None
 
         self.logger.info("Starting to read VolumeMapping from: %s" % path)
         h5_file = h5py.File(path, 'r', libver='latest')
 
-        data = h5_file['/data'][()]
+        vm = region_mapping.RegionVolumeMapping()
+        vm.array_data = h5_file['/data'][()]
 
         h5_file.close()
         self.logger.info("Successfully read volume mapping!")  #: %s" % data)
 
-        return data
+        return vm
 
     def read_region_mapping(self, path):
         """
@@ -165,17 +184,18 @@ class H5Reader(object):
         """
         if not os.path.isfile(path):
             self.logger.warning("RegionMapping file %s does not exist" % path)
-            return numpy.array([])
+            return None
 
         self.logger.info("Starting to read RegionMapping from: %s" % path)
         h5_file = h5py.File(path, 'r', libver='latest')
 
-        data = h5_file['/data'][()]
+        rm = region_mapping.RegionMapping()
+        rm.array_data = h5_file['/data'][()]
 
         h5_file.close()
         self.logger.info("Successfully read region mapping!")  #: %s" % data)
 
-        return data
+        return rm
 
     def read_t1(self, path):
         """
@@ -184,17 +204,18 @@ class H5Reader(object):
         """
         if not os.path.isfile(path):
             self.logger.warning("StructuralMRI file %s does not exist" % path)
-            return numpy.array([])
+            return None
 
         self.logger.info("Starting to read StructuralMRI from: %s" % path)
         h5_file = h5py.File(path, 'r', libver='latest')
 
-        data = h5_file['/data'][()]
+        t1 = structural.StructuralMRI()
+        t1.array_data = h5_file['/data'][()]
 
         h5_file.close()
         self.logger.info("Successfully read structural MRI from: %s" % path)
 
-        return data
+        return t1
 
     def read_head(self, path, atlas="default"):
         """
@@ -202,21 +223,37 @@ class H5Reader(object):
         :return: Head object
         """
         self.logger.info("Starting to read Head from: %s" % path)
-        conn = self.read_connectivity(os.path.join(path, self.connectivity_filename))
-        cort_srf = self.read_surface(os.path.join(path, self.cortical_surface_filename))
-        subcort_srf = self.read_surface(os.path.join(path, self.subcortical_surface_filename))
-        cort_rm = self.read_region_mapping(os.path.join(path, self.cortical_region_mapping_filename))
-        subcort_rm = self.read_region_mapping(os.path.join(path, self.subcortical_region_mapping_filename))
-        vm = self.read_volume_mapping(os.path.join(path, self.volume_mapping_filename))
-        t1 = self.read_t1(os.path.join(path, self.structural_mri_filename))
-        sensorsSEEG, sensorsEEG, sensorsMEG = self.read_sensors(path)
+        conn = \
+            self.read_connectivity(os.path.join(path, self.connectivity_filename))
+        cort_srf =\
+            self.read_surface(os.path.join(path, self.cortical_surface_filename), CorticalSurface)
+        subcort_srf = \
+            self.read_surface(os.path.join(path, self.subcortical_surface_filename), SubcorticalSurface)
+        cort_rm = \
+            self.read_region_mapping(os.path.join(path, self.cortical_region_mapping_filename))
+        if cort_rm is not None:
+            cort_rm.connectivity = conn._tvb
+            if cort_srf is not None:
+                cort_rm.surface = cort_srf._tvb
+        subcort_rm = \
+            self.read_region_mapping(os.path.join(path, self.subcortical_region_mapping_filename))
+        if subcort_rm is not None:
+            subcort_rm.connectivity = conn._tvb
+            if subcort_srf is not None:
+                subcort_rm.surface = subcort_srf._tvb
+        vm = \
+            self.read_volume_mapping(os.path.join(path, self.volume_mapping_filename))
+        t1 = \
+            self.read_t1(os.path.join(path, self.structural_mri_filename))
+        sensors = self.read_sensors(path)
 
         if len(atlas) > 0:
             name = atlas
         else:
             name = path
-        head = Head(conn, cort_srf, subcort_srf, cort_rm, subcort_rm, vm, t1, name,
-                    sensorsSEEG=sensorsSEEG, sensorsEEG=sensorsEEG, sensorsMEG=sensorsMEG)
+
+        head = Head(conn, sensors, cort_srf, subcort_srf, cort_rm, subcort_rm, vm, t1, name)
+
         self.logger.info("Successfully read Head from: %s" % path)
 
         return head

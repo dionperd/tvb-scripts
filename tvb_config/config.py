@@ -10,8 +10,8 @@ class GenericConfig(object):
     _module_path = os.path.dirname(__file__)
 
     # Identify and choose the Simulator, or data folder type to read.
-    MODE_IO = "tvb-io"
-    MODE_TVB = "tvb-data"
+    MODE_H5 = "H5"
+    MODE_TVB = "TVB"
 
 
 class InputConfig(object):
@@ -46,7 +46,7 @@ class InputConfig(object):
         # Expecting to run in the top of tvb_fit GIT repo, with the dummy head
         return os.path.join(self._base_input, "data", "raw")
 
-    def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_IO, raw_folder=None):
+    def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_H5, raw_folder=None):
         self._head_folder = head_folder
         self._data_mode = data_mode
         self._raw_data = raw_folder
@@ -128,9 +128,8 @@ class Config(object):
     figures = FiguresConfig()
     calcul = CalculusConfig()
 
-    def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_IO,
-                 raw_data_folder=None,
-                 output_base=None, separate_by_run=False):
+    def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_TVB,
+                 raw_data_folder=None, output_base=None, separate_by_run=False):
         self.input = InputConfig(head_folder, data_mode, raw_data_folder)
         self.out = OutputConfig(output_base, separate_by_run)
 

@@ -11,7 +11,7 @@ class TestPlotter(BaseTest):
     def test_plot_head(self):
         head = self._prepare_dummy_head()
         # TODO: this filenames may change because they are composed inside the plotting functions
-        filename1 = "Connectivity_.png"
+        filename1 = "Connectivity.png"
         filename2 = "HeadStats.png"
         filename3 = "1-SEEG-Projection.png"
 

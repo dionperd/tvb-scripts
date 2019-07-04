@@ -6,10 +6,15 @@ import numpy
 from tvb_utils.log_error_utils import raise_value_error
 from tvb_utils.file_utils import change_filename_or_overwrite, write_metadata
 from tvb_head.model.connectivity import ConnectivityH5Field
-from tvb_head.model.sensors import SensorsH5Field
-from tvb_head.model.surface import SurfaceH5Field
+from tvb_head.model.sensors import SensorsH5Field, SensorTypes, Sensors
+from tvb_head.model.surface import SurfaceH5Field, Surface
 from tvb_timeseries.timeseries import Timeseries
 from tvb_io.h5_writer_base import H5WriterBase
+
+from tvb.datatypes.projections import ProjectionMatrix
+from tvb.datatypes.region_mapping import RegionMapping, RegionVolumeMapping
+from tvb.datatypes.structural import StructuralMRI
+
 
 KEY_TYPE = "Type"
 KEY_VERSION = "Version"
@@ -41,6 +46,7 @@ class H5Writer(H5WriterBase):
         h5_file.create_dataset(ConnectivityH5Field.REGION_LABELS, data=connectivity.region_labels)
         h5_file.create_dataset(ConnectivityH5Field.ORIENTATIONS, data=connectivity.orientations)
         h5_file.create_dataset(ConnectivityH5Field.HEMISPHERES, data=connectivity.hemispheres)
+        h5_file.create_dataset(ConnectivityH5Field.AREAS, data=connectivity.areas)
 
         h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "Connectivity")
         h5_file.attrs.create("Number_of_regions", str(connectivity.number_of_regions))
@@ -53,91 +59,108 @@ class H5Writer(H5WriterBase):
         self.logger.info("Connectivity has been written to file: %s" % path)
         h5_file.close()
 
-    def write_sensors(self, sensors, path):
+    def write_sensors(self, sensors, path, projection=None):
         """
         :param sensors: Sensors object to write in H5
         :param path: H5 path to be written
         """
-        h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
+        if isinstance(sensors, Sensors):
+            h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
 
-        h5_file.create_dataset(SensorsH5Field.LABELS, data=sensors.labels)
-        h5_file.create_dataset(SensorsH5Field.LOCATIONS, data=sensors.locations)
-        h5_file.create_dataset(SensorsH5Field.NEEDLES, data=sensors.needles)
+            h5_file.create_dataset(SensorsH5Field.LABELS, data=sensors.labels)
+            h5_file.create_dataset(SensorsH5Field.LOCATIONS, data=sensors.locations)
+            h5_file.create_dataset(SensorsH5Field.ORIENTATIONS, data=sensors.orientations)
 
-        gain_dataset = h5_file.create_dataset(SensorsH5Field.GAIN_MATRIX, data=sensors.gain_matrix)
-        gain_dataset.attrs.create("Max", str(sensors.gain_matrix.max()))
-        gain_dataset.attrs.create("Min", str(sensors.gain_matrix.min()))
+            if sensors.sensors_type in [SensorTypes.TYPE_SEEG.value, SensorTypes.TYPE_INTERNAL.value]:
+                h5_file.create_dataset("ElectrodeLabels", data=sensors.channel_labels)
+                h5_file.create_dataset("ElectrodeIndices", data=sensors.channel_inds)
 
-        h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "Sensors")
-        h5_file.attrs.create("Number_of_sensors", str(sensors.number_of_sensors))
-        h5_file.attrs.create("Sensors_subtype", str(sensors.s_type))
+            if isinstance(projection, ProjectionMatrix):
+                projection = projection.projection_data
+            elif not isinstance(projection, numpy.ndarray):
+                projection = numpy.array([])
+            projection_dataset = h5_file.create_dataset(SensorsH5Field.PROJECTION_MATRIX, data=projection)
+            if projection.size > 0:
+                projection_dataset.attrs.create("Max", str(projection.max()))
+                projection_dataset.attrs.create("Min", str(projection.min()))
 
-        self.logger.info("Sensors have been written to file: %s" % path)
-        h5_file.close()
+            h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "Sensors")
+            h5_file.attrs.create("Number_of_sensors", str(sensors.number_of_sensors))
+            h5_file.attrs.create("Sensors_subtype", str(sensors.sensors_type))
+            h5_file.attrs.create("name", str(sensors.name))
+
+            self.logger.info("Sensors have been written to file: %s" % path)
+            h5_file.close()
 
     def write_surface(self, surface, path):
         """
         :param surface: Surface object to write in H5
         :param path: H5 path to be written
         """
-        h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
+        if isinstance(surface, Surface):
+            h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
 
-        h5_file.create_dataset(SurfaceH5Field.VERTICES, data=surface.vertices)
-        h5_file.create_dataset(SurfaceH5Field.TRIANGLES, data=surface.triangles)
-        h5_file.create_dataset(SurfaceH5Field.VERTEX_NORMALS, data=surface.vertex_normals)
+            h5_file.create_dataset(SurfaceH5Field.VERTICES, data=surface.vertices)
+            h5_file.create_dataset(SurfaceH5Field.TRIANGLES, data=surface.triangles)
+            h5_file.create_dataset(SurfaceH5Field.VERTEX_NORMALS, data=surface.vertex_normals)
+            h5_file.create_dataset(SurfaceH5Field.TRIANGLE_NORMALS, data=surface.triangle_normals)
 
-        h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "Surface")
-        h5_file.attrs.create("Surface_subtype", surface.surface_subtype.upper())
-        h5_file.attrs.create("Number_of_triangles", surface.triangles.shape[0])
-        h5_file.attrs.create("Number_of_vertices", surface.vertices.shape[0])
-        h5_file.attrs.create("Voxel_to_ras_matrix", str(surface.vox2ras.flatten().tolist())[1:-1].replace(",", ""))
+            h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "Surface")
+            h5_file.attrs.create("Surface_subtype", surface.surface_subtype.upper())
+            h5_file.attrs.create("Number_of_triangles", surface.triangles.shape[0])
+            h5_file.attrs.create("Number_of_vertices", surface.vertices.shape[0])
+            h5_file.attrs.create("Voxel_to_ras_matrix", str(surface.vox2ras.flatten().tolist())[1:-1].replace(",", ""))
 
-        self.logger.info("Surface has been written to file: %s" % path)
-        h5_file.close()
+            self.logger.info("Surface has been written to file: %s" % path)
+            h5_file.close()
 
     def write_region_mapping(self, region_mapping, path, n_regions, subtype="Cortical"):
         """
             :param region_mapping: region_mapping array to write in H5
             :param path: H5 path to be written
         """
-        h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
+        if isinstance(region_mapping, RegionMapping):
+            h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
 
-        h5_file.create_dataset("data", data=region_mapping)
+            h5_file.create_dataset("data", data=region_mapping.array_data)
 
-        data_length = len(region_mapping)
-        h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "RegionMapping")
-        h5_file.attrs.create("Connectivity_parcel", "Connectivity-%d" % n_regions)
-        h5_file.attrs.create("Surface_parcel", "Surface-%s-%d" % (subtype.capitalize(), data_length))
-        h5_file.attrs.create("Length_data", data_length)
+            data_length = len(region_mapping.array_data)
+            h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "RegionMapping")
+            h5_file.attrs.create("Connectivity_parcel", "Connectivity-%d" % n_regions)
+            h5_file.attrs.create("Surface_parcel", "Surface-%s-%d" % (subtype.capitalize(), data_length))
+            h5_file.attrs.create("Length_data", data_length)
 
-        self.logger.info("Region mapping has been written to file: %s" % path)
-        h5_file.close()
+            self.logger.info("Region mapping has been written to file: %s" % path)
+            h5_file.close()
 
-    def write_volume(self, volume_data, path, type, n_regions):
+    def write_volume(self, volume, path, vol_type, n_regions):
         """
             :param t1: t1 array to write in H5
             :param path: H5 path to be written
         """
-        shape = volume_data.shape
-        if len(shape) < 3:
-            shape = (0, 0, 0)
-        h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
-        h5_file.create_dataset("data", data=volume_data)
-        h5_file.attrs.create("Connectivity_parcel", "Connectivity-%d" % n_regions)
-        h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "VolumeData")
-        h5_file.attrs.create("Length_x", str(shape[0]))
-        h5_file.attrs.create("Length_y", str(shape[1]))
-        h5_file.attrs.create("Length_z", str(shape[2]))
-        h5_file.attrs.create("Type", type.upper())
+        if isinstance(volume, (RegionVolumeMapping, StructuralMRI)):
+            shape = volume.array_data.shape
+            if len(shape) < 3:
+                shape = (0, 0, 0)
+            h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
+            h5_file.create_dataset("data", data=volume.array_data)
+            h5_file.attrs.create("Connectivity_parcel", "Connectivity-%d" % n_regions)
+            h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, "VolumeData")
+            h5_file.attrs.create("Length_x", str(shape[0]))
+            h5_file.attrs.create("Length_y", str(shape[1]))
+            h5_file.attrs.create("Length_z", str(shape[2]))
+            h5_file.attrs.create("Type", vol_type.upper())
 
-        self.logger.info("%s volume has been written to file: %s" % (type, path))
-        h5_file.close()
+            self.logger.info("%s volume has been written to file: %s" % (vol_type, path))
+            h5_file.close()
 
-    def write_t1(self, t1_data, path, n_regions):
-        self.write_volume(t1_data, path, "STRUCTURAL", n_regions)
+    def write_t1(self, t1, path, n_regions):
+        if isinstance(t1, StructuralMRI):
+            self.write_volume(t1, path, "STRUCTURAL", n_regions)
 
-    def write_volume_mapping(self, volume_mapping_data, path, n_regions):
-        self.write_volume(volume_mapping_data, path, "MAPPING", n_regions)
+    def write_volume_mapping(self, volume_mapping, path, n_regions):
+        if isinstance(volume_mapping, RegionVolumeMapping):
+            self.write_volume(volume_mapping, path, "MAPPING", n_regions)
 
     def write_head(self, head, path):
         """
@@ -158,12 +181,13 @@ class H5Writer(H5WriterBase):
             self.write_region_mapping(head.subcortical_region_mapping,
                                       os.path.join(path, "SubcorticalRegionMapping.h5"),
                                       n_regions, "Subcortical")
-        self.write_volume_mapping(head.volume_mapping, os.path.join(path, "VolumeMapping.h5"), n_regions)
-        self.write_t1(head.t1_background, os.path.join(path, "StructuralMRI.h5"), n_regions)
-        for sensor_list in (head.sensorsSEEG, head.sensorsEEG, head.sensorsMEG):
-            for key, sensors in sensor_list.items():
-                self.write_sensors(sensors, os.path.join(path, "Sensors%s_%s.h5" %
-                                                      (sensors.s_type.value, sensors.number_of_sensors)))
+        self.write_volume_mapping(head.region_volume_mapping, os.path.join(path, "VolumeMapping.h5"), n_regions)
+        self.write_t1(head.t1, os.path.join(path, "StructuralMRI.h5"), n_regions)
+        for s_type, sensors_set in head.sensors.items():
+            for sensor, projection in sensors_set.items():
+                self.write_sensors(sensor,
+                                   os.path.join(path, "%s.h5" % sensor.name.replace(" ", "")),
+                                   projection)
 
         self.logger.info("Successfully wrote Head folder at: %s" % path)
 

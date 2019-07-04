@@ -14,7 +14,7 @@ class BaseTest(object):
     config = Config(output_base=os.path.join(os.getcwd(), "test_out"))
 
     dummy_connectivity = Connectivity("", numpy.array([[1.0, 2.0, 3.0], [2.0, 3.0, 1.0], [3.0, 2.0, 1.0]]),
-                                      numpy.array([[4, 5, 6], [5, 6, 4], [6, 4, 5]]), labels=["a", "b", "c"],
+                                      numpy.array([[4, 5, 6], [5, 6, 4], [6, 4, 5]]), region_labels=["a", "b", "c"],
                                       centres=numpy.array([1.0, 2.0, 3.0]), normalized_weights=numpy.array(
             [[1.0, 2.0, 3.0], [2.0, 3.0, 1.0], [3.0, 2.0, 1.0]]))
     dummy_surface = Surface(numpy.array([[1, 2, 3], [2, 3, 1], [3, 1, 2]]), numpy.array([[0, 1, 2]]))

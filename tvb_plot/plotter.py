@@ -1,7 +1,7 @@
 # coding=utf-8
 
-from tvb_fit.plot.head_plotter import HeadPlotter
-from tvb_fit.plot.timeseries_plotter import TimeseriesPlotter
+from tvb_plot.head_plotter import HeadPlotter
+from tvb_plot.timeseries_plotter import TimeseriesPlotter
 
 
 class Plotter(object):

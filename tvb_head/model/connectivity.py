@@ -1,8 +1,9 @@
 # coding=utf-8
-
 import numpy as np
+from tvb_utils.log_error_utils import warning
 from tvb_utils.data_structures_utils import reg_dict, formal_repr, sort_dict, labels_to_inds
-from tvb_utils.computation_utils import normalize_weights
+from tvb_utils.computations_utils import normalize_weights
+from tvb.datatypes.connectivity import Connectivity as TVBConnectivity
 
 
 class ConnectivityH5Field(object):
@@ -12,51 +13,49 @@ class ConnectivityH5Field(object):
     REGION_LABELS = "region_labels"
     ORIENTATIONS = "orientations"
     HEMISPHERES = "hemispheres"
+    AREAS = "areas"
 
 
 class Connectivity(object):
-    file_path = None
-    weights = None
-    normalized_weights = None
-    tract_lengths = None
-    region_labels = None
-    centres = None
-    hemispheres = None
-    orientations = None
-    areas = None
+    _tvb = TVBConnectivity()
+    file_path = ""
+    normalized_weights = np.array([])
 
-    def __init__(self, file_path, weights, tract_lengths, labels=np.array([]), centres=np.array([]),
-                 hemispheres=np.array([]), orientations=np.array([]), areas=np.array([]),
-                 normalized_weights=np.array([])):
-        self.file_path = file_path
-        self.weights = weights
-        if len(normalized_weights) == 0:
-            normalized_weights = normalize_weights(weights, remove_diagonal=True, ceil=1.0)
-        self.normalized_weights = normalized_weights
-        self.tract_lengths = tract_lengths
-        self.region_labels = labels
-        self.centres = centres
-        self.hemispheres = hemispheres
-        self.orientations = orientations
-        self.areas = areas
+    def __init__(self, **kwargs):
+        self.file_path = kwargs.pop("file_path", "")
+        self._tvb = kwargs.pop("tvb_connectivity", TVBConnectivity())
+        self.normalized_weights = kwargs.pop("normalized_weights", np.array([]))
+        for attr, value in kwargs.items():
+            try:
+                if value.any():
+                    setattr(self._tvb, attr, value)
+            except:
+                warning("Failed to set attribute %s to TVB connectivity!" % attr)
+
+    def __getattr__(self, attr):
+        return getattr(self._tvb, attr)
+
+    def from_tvb_instance(self, instance):
+        self._tvb = instance
+        if len(self.normalized_weights) == 0:
+            self.normalized_weights = normalize_weights(self._tvb.weights, remove_diagonal=True, ceil=1.0)
+        return self
+
+    def from_tvb_file(self, filepath):
+        self._tvb = TVBConnectivity.from_file(filepath, self._tvb)
+        if len(self.normalized_weights) == 0:
+            self.normalized_weights = normalize_weights(self._tvb.weights, remove_diagonal=True, ceil=1.0)
+        self.file_path = filepath
+        return self
 
     @property
     def number_of_regions(self):
-        return self.centres.shape[0]
+        return self._tvb.centres.shape[0]
 
-    def __repr__(self):
-        d = {"f. normalized weights": reg_dict(self.normalized_weights, self.region_labels),
-             "g. weights": reg_dict(self.weights, self.region_labels),
-             "h. tract_lengths": reg_dict(self.tract_lengths, self.region_labels),
-             "a. region_labels": reg_dict(self.region_labels),
-             "b. centres": reg_dict(self.centres, self.region_labels),
-             "c. hemispheres": reg_dict(self.hemispheres, self.region_labels),
-             "d. orientations": reg_dict(self.orientations, self.region_labels),
-             "e. areas": reg_dict(self.areas, self.region_labels)}
-        return formal_repr(self, sort_dict(d))
-
-    def __str__(self):
-        return self.__repr__()
+    def configure(self):
+        self._tvb.configure()
+        if len(self.normalized_weights) == 0:
+            self.normalized_weights = normalize_weights(self.weights, remove_diagonal=True, ceil=1.0)
 
     def regions_labels2inds(self, labels):
         inds = []
@@ -72,4 +71,4 @@ class Connectivity(object):
 
     @property
     def centers(self):
-        return self.centres
+        return self._tvb.centres

@@ -1,10 +1,13 @@
 # coding=utf-8
+from six import string_types
 from collections import OrderedDict
-import numpy as np
 
-from tvb_utils.log_error_utils import raise_value_error, initialize_logger
-from tvb_utils.data_structures_utils import reg_dict, formal_repr, sort_dict, ensure_list
-from tvb_head.model.sensors import Sensors, SensorTypes
+from tvb_utils.log_error_utils import initialize_logger, raise_value_error, warning
+from tvb_utils.data_structures_utils import isequal_string, is_integer
+from tvb_head.model.sensors import Sensors, SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
+
+from tvb.datatypes.projections import ProjectionMatrix
+from tvb.datatypes.cortex import Cortex
 
 
 class Head(object):
@@ -13,115 +16,105 @@ class Head(object):
     """
     logger = initialize_logger(__name__)
 
-    def __init__(self, connectivity, cortical_surface=None, subcortical_surface=None,
-                 cortical_region_mapping=np.array([]), subcortical_region_mapping=np.array([]),
-                 vm=np.array([]), t1=np.array([]), name='', **kwargs):
+    def __init__(self, connectivity, sensors=OrderedDict(),
+                 cortical_surface=None, subcortical_surface=None,
+                 cortical_region_mapping=None, subcortical_region_mapping=None,
+                 region_volume_mapping=None, t1=None, name=''):
+        self.name = name
         self.connectivity = connectivity
         self.cortical_surface = cortical_surface
         self.subcortical_surface = subcortical_surface
         self.cortical_region_mapping = cortical_region_mapping
         self.subcortical_region_mapping = subcortical_region_mapping
-        self.volume_mapping = vm
-        self.t1_background = t1
-        self.sensorsSEEG = OrderedDict()
-        self.sensorsEEG = OrderedDict()
-        self.sensorsMEG = OrderedDict()
-        for s_type in SensorTypes:
-            self.set_sensors(kwargs.get("sensors" + s_type.value), s_type=s_type)
-        if len(name) == 0:
-            self.name = 'Head' + str(self.number_of_regions)
-        else:
-            self.name = name
+        self.region_volume_mapping = region_volume_mapping
+        self.t1 = t1
+        self.sensors = sensors
 
     @property
     def number_of_regions(self):
         return self.connectivity.number_of_regions
 
+    @property
+    def cortex(self):
+        cortex = Cortex()
+        cortex.region_mapping_data = self.cortical_region_mapping
+        cortex = cortex.populate_cortex(self.cortical_surface._tvb, {})
+        for s_type, sensors in self.sensors.items():
+            if isinstance(sensors, OrderedDict) and len(sensors) > 0:
+                projection = sensors.values()[0]
+                if projection is not None:
+                    setattr(cortex, s_type.lower(), projection.projection_data)
+        cortex.configure()
+        return cortex
+
+    def configure(self):
+        self.connectivity.configure()
+        self.cortical_surface.configure()
+        self.subcortical_surface.configure()
+        for s_type, sensors_set in self.sensors.items():
+            for sensor, projection in sensors_set.items():
+                sensor.configure()
+
     def filter_regions(self, filter_arr):
         return self.connectivity.region_labels[filter_arr]
 
-    def __repr__(self):
-        d = {"1. name": self.name,
-             "2. connectivity": self.connectivity,
-             "3. cortical region mapping": reg_dict(self.cortical_region_mapping, self.connectivity.region_labels),
-             "4. subcortical region mapping": reg_dict(self.subcortical_region_mapping,
-                                                       self.connectivity.region_labels),
-             "5. VM": reg_dict(self.volume_mapping, self.connectivity.region_labels),
-             "6. cortical surface": self.cortical_surface,
-             "7. subcortical surface": self.cortical_surface,
-             "8. T1": self.t1_background,
-             "9. SEEG": self.sensorsSEEG,
-             "10. EEG": self.sensorsEEG,
-             "11. MEG": self.sensorsMEG}
-        return formal_repr(self, sort_dict(d))
-
-    def __str__(self):
-        return self.__repr__()
-
-    def get_sensors(self, s_type=SensorTypes.TYPE_SEEG):
-        if np.in1d(s_type, [stype for stype in SensorTypes]):
-            return getattr(self, "sensors" + s_type.value)
+    def get_sensors(self, s_type=SensorTypes.TYPE_EEG, name_or_index=None):
+        sensors_set = OrderedDict()
+        if s_type not in SensorTypesNames:
+            raise_value_error("Invalid input sensor type!: %s" % str(s_type))
         else:
-            raise_value_error("Invalid input sensor type " + str(s_type))
-
-    def set_sensors(self, input_sensors, s_type=SensorTypes.TYPE_SEEG, reset=False):
-        if input_sensors is None:
-            return
-        sensors = self.get_sensors(s_type)
-        if reset is False or len(sensors) == 0:
-            sensors = OrderedDict()
-        for s_name, s in input_sensors.items():
-            if isinstance(s, Sensors) and (s.s_type == s_type):
-                if s.gain_matrix is None or s.gain_matrix.shape != (s.number_of_sensors, self.number_of_regions):
-                    self.logger.warning("No correctly sized gain matrix found in sensors!")
-                sensors[s_name] = s
+            sensors_set = self.sensors.get(s_type, None)
+        out_sensor = None
+        out_projection = None
+        if isinstance(sensors_set, OrderedDict):
+            if isinstance(name_or_index, string_types):
+                for sensor, projection in sensors_set.items():
+                    if isequal_string(sensor.name, name_or_index):
+                        out_sensor = sensor
+                        out_projection = projection
+            elif is_integer(name_or_index):
+                out_sensor = sensors_set.keys()[name_or_index]
+                out_projection = sensors_set.values()[name_or_index]
             else:
-                if s is not None:
-                    raise_value_error("Input sensors:\n" + str(s) +
-                                      "\nis not a valid Sensors object of type " + str(s_type) + "!")
-        setattr(self, "sensors" + s_type.value, sensors)
+                return sensors_set
+        return out_sensor, out_projection
 
-    def get_sensors_by_name(self, name, s_type=SensorTypes.TYPE_SEEG):
-        sensors = self.get_sensors(s_type)
-        if sensors is None:
-            return sensors
+    def set_sensors(self, input_sensors, s_type=SensorTypes.TYPE_EEG, reset=False):
+        if not isinstance(input_sensors, (Sensors, dict, list, tuple)):
+            return raise_value_error("Invalid input sensors instance''!: %s" % str(input_sensors))
+        if s_type not in SensorTypesNames:
+            raise_value_error("Invalid input sensor type!: %s" % str(s_type))
+        sensors_set = self.get_sensors(s_type)[0]
+        if reset is True:
+            sensors_set = OrderedDict()
+        if isinstance(input_sensors, dict):
+            input_projections = input_sensors.values()
+            input_sensors = input_sensors.keys()
         else:
-            out_sensors = OrderedDict()
-            for s_name, s in sensors.items():
-                if s_name.lower().find(name.lower()) >= 0:
-                    out_sensors[s.name] = s
-            if len(out_sensors) == 0:
-                return None
-            elif len(out_sensors) == 1:
-                return out_sensors.values()[0]
+            if isinstance(input_sensors, Sensors):
+                input_sensors = [input_sensors]
             else:
-                return out_sensors
+                input_sensors = list(input_sensors)
+            input_projections = [None] * len(input_sensors)
 
-    def sensors_name_to_id(self, name, s_type=SensorTypes.TYPE_SEEG):
-        sensors = self.get_sensors(s_type)
-        if sensors is None:
-            return None
-        else:
-            out_sensor_id = None
-            for sensor_id, (s_name, s) in enumerate(sensors.items()):
-                if s_name.lower() == name.lower():
-                    return sensor_id
-            return out_sensor_id
-
-    def get_sensors_by_index(self, s_type=SensorTypes.TYPE_SEEG, sensor_ids=0):
-        sensors = self.get_sensors(s_type)
-        if sensors is None:
-            return sensors
-        else:
-            sensors = sensors.values()
-            out_sensors = []
-            sensors = ensure_list(sensors)
-            for iS, s in enumerate(sensors):
-                if np.in1d(iS, sensor_ids):
-                    out_sensors.append(sensors[iS])
-            if len(out_sensors) == 0:
-                return None
-            elif len(out_sensors) == 1:
-                return out_sensors[0]
+        for sensor, projection in zip(input_sensors, input_projections):
+            if not isinstance(sensor, Sensors):
+                raise_value_error("Input sensors:\n%s"
+                                  "\nis not a valid Sensors object of type %s!" % (str(sensor), s_type))
+            if sensor.sensors_type != s_type:
+                raise_value_error("Sensors %s \nare not of type %s!" % (str(sensor), s_type))
+            if not isinstance(projection, ProjectionMatrix):
+                warning("projection is not set for sensor with name:\n%s!" % sensor.name)
+                sensors_set.update({sensor: None})
             else:
-                return out_sensors
+                if projection.projection_type != SensorTypesToProjectionDict[s_type]:
+                    raise_value_error("Disaggreement between sensors'type %s and projection's type %s!"
+                                      % (sensor.sensors_type, projection.projection_type))
+                good_sensor_shape = (sensor.number_of_sensors, self.number_of_regions)
+                if projection.projection_data.shape != good_sensor_shape:
+                    warning("projections' shape %s of sensor %s "
+                            "is not equal to (number_of_sensors, number_of_regions)=%s!"
+                            % (str(projection.projection_data.shape), sensor.name, str(good_sensor_shape)))
+                sensors_set.update({sensor: projection})
+
+        self.sensors[s_type] = sensors_set
