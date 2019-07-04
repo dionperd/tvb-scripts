@@ -24,10 +24,10 @@ setuptools.setup(name='tvb-scripts',
                  include_package_data=True,
                  description='A package with helper functions (tvb-utils), '
                              'plotting functions (tvb-plot), '
-                             'a Timeseries model and service (tvb-timeseries), '
-                             'io module (tvb-io) '
-                             'and a tvb-subject model and services, '
-                             'for more TVB efficient scripting.',
+                             'a Timeseries4D model and service (tvb-timeseries), '
+                             'io module (tvb-io) to and from TVB and h5 files'
+                             'and a tvb-head model and services for TVB Structural data, '
+                             'for more efficient TVB scripting.',
                  license="GPL v3",
                  author="TVB Team",
                  author_email='tvb.admin@thevirtualbrain.org',
