@@ -8,11 +8,11 @@ from scipy.stats import zscore
 from pylab import demean
 
 from tvb_utils.log_error_utils import raise_value_error, initialize_logger
-from tvb_utils.data_structures_utils import isequal_string, ensure_list, is_integer
+from tvb_utils.data_structures_utils import isequal_string, ensure_list
 from tvb_utils.computations_utils import select_greater_values_array_inds,\
     select_by_hierarchical_group_metric_clustering
 from tvb_utils.analyzers_utils import abs_envelope, spectrogram_envelope, filter_data
-from tvb_timeseries.timeseries import TimeseriesDimensions
+from tvb_timeseries.model.timeseries4d import Timeseries4dDimensions
 
 
 def decimate_signals(signals, time, decim_ratio):
@@ -32,6 +32,9 @@ def cut_signals_tails(signals, time, cut_tails):
 
 
 NORMALIZATION_METHODS = ["zscore", "mean","min", "max", "baseline", "baseline-amplitude", "baseline-std", "minmax"]
+
+
+# TODO: Add a service to convert to 2D Time Series TVB instances
 
 
 def normalize_signals(signals, normalization=None, axis=None, percent=None):
@@ -95,7 +98,7 @@ def normalize_signals(signals, normalization=None, axis=None, percent=None):
     return signals
 
 
-class TimeseriesService(object):
+class Timeseries4DService(object):
 
     logger = initialize_logger(__name__)
 
@@ -194,8 +197,8 @@ class TimeseriesService(object):
                 out_timeseries.data = np.concatenate([out_timeseries.data,
                                                       timeseries.get_subspace_by_labels(labels).data], axis=0)
             else:
-                raise_value_error("Timeseries concatenation in time failed!\n"
-                                  "Timeseries %d have a different time step (%s) than the ones before(%s)!" \
+                raise_value_error("Timeseries4D concatenation in time failed!\n"
+                                  "Timeseries4D %d have a different time step (%s) than the ones before(%s)!" \
                                   % (id, str(np.float32(timeseries.time_step)),
                                      str(np.float32(out_timeseries.time_step))))
         return out_timeseries
@@ -257,18 +260,18 @@ class TimeseriesService(object):
             seeg = OrderedDict()
             for sensor_name, sensor in sensors.items():
                 seeg[sensor_name] = source_timeseries.__class__(seeg_fun(source_timeseries, sensor.gain_matrix),
-                                                                {TimeseriesDimensions.SPACE.value: sensor.labels,
-                                                                 TimeseriesDimensions.VARIABLES.value: [sensor.name]},
+                                                                {Timeseries4dDimensions.SPACE.value: sensor.labels,
+                                                                 Timeseries4dDimensions.VARIABLES.value: [sensor.name]},
                                                                 source_timeseries.time_start,
                                                                 source_timeseries.time_step,
                                                                 source_timeseries.time_unit)
             return seeg
         else:
             return source_timeseries.__class__(seeg_fun(source_timeseries, sensors.gain_matrix),
-                                                {TimeseriesDimensions.SPACE.value: sensors.labels,
-                                                 TimeseriesDimensions.VARIABLES.value: [sensors.name]},
-                                                source_timeseries.time_start, source_timeseries.time_step,
-                                                source_timeseries.time_unit)
+                                               {Timeseries4dDimensions.SPACE.value: sensors.labels,
+                                                Timeseries4dDimensions.VARIABLES.value: [sensors.name]},
+                                               source_timeseries.time_start, source_timeseries.time_step,
+                                               source_timeseries.time_unit)
 
 
 def compute_seeg_lin(source_timeseries, gain_matrix):
