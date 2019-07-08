@@ -117,6 +117,9 @@ class CalculusConfig(object):
     # Normalization configuration
     WEIGHTS_NORM_PERCENT = 99
 
+    # If True a plot will be generated to choose the number of eigenvalues to keep
+    INTERACTIVE_ELBOW_POINT = False
+
     MIN_SINGLE_VALUE = np.finfo("single").min
     MAX_SINGLE_VALUE = np.finfo("single").max
     MAX_INT_VALUE = np.iinfo(np.int64).max
