@@ -3,7 +3,6 @@ from collections import OrderedDict
 
 from tvb_utils.log_error_utils import initialize_logger
 
-
 logger = initialize_logger(__name__)
 
 

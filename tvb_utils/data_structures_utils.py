@@ -82,7 +82,7 @@ def join_labels_indices_dict(d):
     return out_list
 
 
-def construct_import_path(path, package="tvb_fit"):
+def construct_import_path(path, package):
     path = path.split(".py")[0]
     start = path.find(package)
     return path[start:].replace("/", ".")

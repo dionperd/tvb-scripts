@@ -23,7 +23,6 @@ class InputConfig(object):
             return self._head_folder
 
         if not self.IS_TVB_MODE:
-            # Expecting to run in the top of tvb_fit GIT repo, with the dummy head
             return os.path.join(self._base_input, "data", "head")
 
         # or else, try to find tvb_data module
@@ -43,7 +42,6 @@ class InputConfig(object):
         if self._raw_data is not None:
             return self._raw_data
 
-        # Expecting to run in the top of tvb_fit GIT repo, with the dummy head
         return os.path.join(self._base_input, "data", "raw")
 
     def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_H5, raw_folder=None):

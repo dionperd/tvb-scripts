@@ -37,7 +37,7 @@ class H5WriterBase(object):
                     #         datasets_dict.update({key: value})
                     #     else:
                     #         metadata_dict.update({key: value})
-                # TODO: check how this works! Be carefull not to include lists and tuples if possible in tvb_fit classes!
+                # TODO: check how this works! Be carefull not to include lists and tuples if possible in tvb classes!
                 elif isinstance(value, (list, tuple)):
                     warning("Writing %s %s to h5 file as a numpy array dataset !" % (value.__class__, key), self.logger)
                     datasets_dict.update({key: numpy.array(value)})
