@@ -1,3 +1,4 @@
+# coding=utf-8
 import numpy as np
 from scipy.signal import butter, filtfilt, welch, periodogram, spectrogram
 from scipy.interpolate import interp1d, griddata

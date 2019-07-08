@@ -8,11 +8,11 @@ from matplotlib.colors import Normalize
 
 import numpy
 
-from tvb_fit.base.utils.log_error_utils import warning, raise_value_error
-from tvb_fit.base.utils.data_structures_utils import ensure_list, isequal_string, \
+from tvb_utils.log_error_utils import warning, raise_value_error
+from tvb_utils.data_structures_utils import ensure_list, isequal_string, \
                                                           generate_region_labels, ensure_string
-from tvb_fit.base.computations.analyzers_utils import time_spectral_analysis
-from tvb_fit.plot.base_plotter import BasePlotter
+from tvb_utils.analyzers_utils import time_spectral_analysis
+from tvb_plot.base_plotter import BasePlotter
 
 
 class TimeseriesPlotter(BasePlotter):

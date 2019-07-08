@@ -1,6 +1,8 @@
+# coding=utf-8
 from collections import OrderedDict
 
-from tvb_fit.base.utils.log_error_utils import initialize_logger
+from tvb_utils.log_error_utils import initialize_logger
+
 
 logger = initialize_logger(__name__)
 

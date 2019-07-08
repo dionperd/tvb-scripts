@@ -1,3 +1,4 @@
+# coding=utf-8
 # File writing/reading and manipulations
 
 import os

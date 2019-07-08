@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import os
 from tvb_plot.plotter import Plotter
 from tvb_tests.base import BaseTest

@@ -1,5 +1,4 @@
 # coding=utf-8
-
 import numpy
 import pytest
 from tvb_timeseries.model.timeseries4d import Timeseries4D, Timeseries4dDimensions, PossibleVariables

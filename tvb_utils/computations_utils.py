@@ -1,12 +1,13 @@
+# coding=utf-8
 # Some math tools
 from itertools import product
 from sklearn.cluster import AgglomerativeClustering
 
 import numpy as np
 
-from tvb_fit.base.config import FiguresConfig, CalculusConfig
-from tvb_fit.base.utils.log_error_utils import initialize_logger
-from tvb_fit.base.utils.data_structures_utils import is_integer
+from tvb_config.config import FiguresConfig, CalculusConfig
+from tvb_utils.log_error_utils import initialize_logger
+from tvb_utils.data_structures_utils import is_integer
 
 
 logger = initialize_logger(__name__)
