@@ -434,4 +434,4 @@ if __name__ == "__main__":
 
     kwargs = {"data": numpy.ones((4, 2, 10, 1)), "start_time": 0.0, "ts_type": "Region"}
     ts = Timeseries(**kwargs)
-    print(ts)
+    print(ts.data)
