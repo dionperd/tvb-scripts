@@ -2,14 +2,18 @@
 from six import string_types
 from enum import Enum
 from copy import deepcopy
-from collections import OrderedDict
 
 import numpy
+
+from tvb.basic.profile import TvbProfile
+
+TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 from tvb_utils.log_error_utils import initialize_logger, raise_value_error, warning
 from tvb_utils.data_structures_utils import isequal_string, monopolar_to_bipolar
 
-from tvb.datatypes.time_series import *
+from tvb.datatypes.time_series import \
+    TimeSeries, TimeSeriesRegion, TimeSeriesEEG, TimeSeriesMEG, TimeSeriesSEEG, TimeSeriesSurface, TimeSeriesVolume
 
 
 class TimeseriesDimensions(Enum):
@@ -424,3 +428,10 @@ class Timeseries(object):
         for attr, value in kwargs.items():
             setattr(duplicate, attr, value)
         return duplicate.configure()
+
+
+if __name__ == "__main__":
+
+    kwargs = {"data": numpy.ones((4, 2, 10, 1)), "start_time": 0.0, "ts_type": "Region"}
+    ts = Timeseries(**kwargs)
+    print(ts)
