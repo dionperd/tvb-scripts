@@ -328,6 +328,21 @@ def delete_list_items_by_values(lin, values):
     return lout
 
 
+def rotate_n_list_elements(lst, n):
+    lst = ensure_list(lst)
+    n_lst = len(lst)
+    if n_lst != n and n_lst != 0:
+        if n_lst == 1:
+            lst *= n
+        elif n_lst > n:
+            lst = lst[:n]
+        else:
+            old_lst = list(lst)
+            while n_lst < n:
+                lst += old_lst[0]
+                old_lst = old_lst[1:] + old_lst[:1]
+    return lst
+
 def linear_index_to_coordinate_tuples(linear_index, shape):
     if len(linear_index) > 0:
         coordinates_tuple = np.unravel_index(linear_index, shape)
