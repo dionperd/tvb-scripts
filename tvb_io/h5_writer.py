@@ -8,7 +8,7 @@ from tvb_utils.file_utils import change_filename_or_overwrite, write_metadata
 from tvb_head.model.connectivity import ConnectivityH5Field
 from tvb_head.model.sensors import SensorsH5Field, SensorTypes, Sensors
 from tvb_head.model.surface import SurfaceH5Field, Surface
-from tvb_timeseries.model.timeseries4d import Timeseries4D
+from tvb_timeseries.model.timeseries import Timeseries
 from tvb_io.h5_writer_base import H5WriterBase
 
 from tvb.datatypes.projections import ProjectionMatrix
@@ -253,7 +253,7 @@ class H5Writer(H5WriterBase):
                                 KEY_START: 0.0}, h5_file, KEY_DATE, KEY_VERSION, "/data")
             else:
                 raise_value_error("Invalid TS data. 2D (time, nodes) numpy.ndarray of floats expected")
-        elif isinstance(raw_data, Timeseries4D):
+        elif isinstance(raw_data, Timeseries):
             if len(raw_data.shape) == 4 and str(raw_data.data.dtype)[0] == "f":
                 h5_file.create_dataset("/data", data=raw_data.data)
                 h5_file.create_dataset("/time", data=raw_data.time)
@@ -261,11 +261,12 @@ class H5Writer(H5WriterBase):
                                        data=numpy.array([numpy.string_(label) for label in raw_data.space_labels]))
                 h5_file.create_dataset("/variables",
                                        data=numpy.array([numpy.string_(var) for var in raw_data.variables_labels]))
-                h5_file.attrs.create("time_unit", raw_data.time_unit)
+                h5_file.attrs.create("sample_period_unit", raw_data.sample_period_unit)
+                h5_file.attrs.create("time_series_type", raw_data.ts_type)
                 write_metadata({KEY_MAX: raw_data.data.max(), KEY_MIN: raw_data.data.min(),
                                 KEY_STEPS: raw_data.data.shape[0], KEY_CHANNELS: raw_data.data.shape[1],
-                                KEY_SV: 1, KEY_SAMPLING: raw_data.time_step,
-                                KEY_START: raw_data.time_start}, h5_file, KEY_DATE, KEY_VERSION, "/data")
+                                KEY_SV: 1, KEY_SAMPLING: raw_data.sample_period,
+                                KEY_START: raw_data.start_time}, h5_file, KEY_DATE, KEY_VERSION, "/data")
             else:
                 raise_value_error("Invalid TS data. 4D (time, nodes) numpy.ndarray of floats expected")
         else:
@@ -273,4 +274,4 @@ class H5Writer(H5WriterBase):
         h5_file.close()
 
     def write_timeseries(self, timeseries, path):
-        self.write_ts(timeseries, timeseries.time_step, path)
+        self.write_ts(timeseries, timeseries.sample_period, path)

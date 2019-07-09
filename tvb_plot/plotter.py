@@ -13,13 +13,19 @@ class Plotter(object):
         return HeadPlotter(self.config).plot_head(head)
 
     def plot_timeseries(self, *args, **kwargs):
-        return TimeseriesPlotter(self.config).plot_timeseries(*args, **kwargs)
+        return TimeseriesPlotter(self.config).plot_ts(*args, **kwargs)
 
     def plot_raster(self,  *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_raster( *args, **kwargs)
 
     def plot_trajectories(self, *args, **kwargs):
-        return TimeseriesPlotter(self.config).plot_timeseries( *args, **kwargs)
+        return TimeseriesPlotter(self.config).plot_ts(*args, **kwargs)
 
     def plot_spectral_analysis_raster(self, *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_spectral_analysis_raster(self, *args, **kwargs)
+
+    def plot_timeseries_interactive(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_timeseries_interactive(*args, **kwargs)
+
+    def plot_power_spectra_interactive(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_power_spectra_interactive(*args, **kwargs)

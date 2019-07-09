@@ -12,7 +12,7 @@ from tvb_utils.data_structures_utils import isequal_string, ensure_list
 from tvb_utils.computations_utils import select_greater_values_array_inds,\
     select_by_hierarchical_group_metric_clustering
 from tvb_utils.analyzers_utils import abs_envelope, spectrogram_envelope, filter_data
-from tvb_timeseries.model.timeseries4d import Timeseries4dDimensions
+from tvb_timeseries.model.timeseries import TimeseriesDimensions
 
 
 def decimate_signals(signals, time, decim_ratio):
@@ -98,7 +98,7 @@ def normalize_signals(signals, normalization=None, axis=None, percent=None):
     return signals
 
 
-class Timeseries4DService(object):
+class TimeseriesService(object):
 
     logger = initialize_logger(__name__)
 
@@ -106,81 +106,66 @@ class Timeseries4DService(object):
 
         self.logger = logger
 
-    def decimate(self, timeseries, decim_ratio):
+    def decimate(self, timeseries, decim_ratio, **kwargs):
         if decim_ratio > 1:
-            return timeseries.__class__(timeseries.data[0:timeseries.time_length:decim_ratio],
-                                        timeseries.dimension_labels, timeseries.time_start,
-                                        decim_ratio*timeseries.time_step, timeseries.time_unit)
+            return timeseries.duplicate(timeseries.data[0:timeseries.time_length:decim_ratio],
+                                        sample_period=decim_ratio*timeseries.sample_period, **kwargs)
         else:
-            return timeseries
+            return timeseries.duplicate()
 
-    def decimate_by_filtering(self, timeseries, decim_ratio):
+    def decimate_by_filtering(self, timeseries, decim_ratio, **kwargs):
         if decim_ratio > 1:
             decim_data, decim_time, decim_dt, decim_n_times = decimate_signals(timeseries.squeezed,
                                                                                timeseries.time, decim_ratio)
-            return timeseries.__class__(decim_data, timeseries.dimension_labels,
-                                        decim_time[0], decim_dt, timeseries.time_unit)
+            return timeseries.duplicate(decim_data, sample_period=decim_dt, **kwargs)
         else:
-            return timeseries
+            return timeseries.duplicate(**kwargs)
 
-    def convolve(self, timeseries, win_len=None, kernel=None):
+    def convolve(self, timeseries, win_len=None, kernel=None, **kwargs):
         n_kernel_points = np.int(np.round(win_len))
         if kernel is None:
             kernel = np.ones((n_kernel_points, 1, 1, 1)) / n_kernel_points
         else:
             kernel = kernel * np.ones((n_kernel_points, 1, 1, 1))
-        return timeseries.__class__(convolve(timeseries.data, kernel, mode='same'), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+        return timeseries.duplicate(convolve(timeseries.data, kernel, mode='same'), **kwargs)
 
-    def hilbert_envelope(self, timeseries):
-        return timeseries.__class__(np.abs(hilbert(timeseries.data, axis=0)), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def hilbert_envelope(self, timeseries, **kwargs):
+        return timeseries.duplicate(np.abs(hilbert(timeseries.data, axis=0)), **kwargs)
 
-    def spectrogram_envelope(self, timeseries, lpf=None, hpf=None, nperseg=None):
+    def spectrogram_envelope(self, timeseries, lpf=None, hpf=None, nperseg=None, **kwargs):
         data, time = spectrogram_envelope(timeseries.squeezed, timeseries.sampling_frequency, lpf, hpf, nperseg)
-        if len(timeseries.time_unit) > 0 and timeseries.time_unit[0] == "m":
+        if len(timeseries.sample_period_unit) > 0 and timeseries.sample_period_unit[0] == "m":
             time *= 1000
-        return timeseries.__class__(data,
-                                    timeseries.dimension_labels, timeseries.time_start+time[0],
-                                    np.diff(time).mean(), timeseries.time_unit)
+        return timeseries.__class__(data, start_time=timeseries.start_time + time[0],
+                                    sample_period=np.diff(time).mean(), **kwargs)
 
-    def abs_envelope(self, timeseries):
-        return timeseries.__class__(abs_envelope(timeseries.data), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def abs_envelope(self, timeseries, **kwargs):
+        return timeseries.__class__(abs_envelope(timeseries.data), **kwargs)
 
-    def detrend(self, timeseries, type='linear'):
-        return timeseries.__class__(detrend(timeseries.data, axis=0, type=type), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def detrend(self, timeseries, type='linear', **kwargs):
+        return timeseries.__class__(detrend(timeseries.data, axis=0, type=type), **kwargs)
 
-    def normalize(self, timeseries, normalization=None, axis=None, percent=None):
-        return timeseries.__class__(normalize_signals(timeseries.data, normalization, axis, percent),
-                                    timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def normalize(self, timeseries, normalization=None, axis=None, percent=None, **kwargs):
+        return timeseries.__class__(normalize_signals(timeseries.data, normalization, axis, percent), **kwargs)
 
-    def filter(self, timeseries, lowcut=None, highcut=None, mode='bandpass', order=3):
+    def filter(self, timeseries, lowcut=None, highcut=None, mode='bandpass', order=3, **kwargs):
         return timeseries.__class__(filter_data(timeseries.data, timeseries.sampling_frequency,
-                                                lowcut, highcut, mode, order),
-                                    timeseries.dimension_labels, timeseries.time_start, timeseries.time_step,
-                                    timeseries.time_unit)
+                                                lowcut, highcut, mode, order), **kwargs)
 
-    def log(self, timeseries):
-        return timeseries.__class__(np.log(timeseries.data), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def log(self, timeseries, **kwargs):
+        return timeseries.__class__(np.log(timeseries.data), **kwargs)
 
-    def exp(self, timeseries):
-        return timeseries.__class__(np.exp(timeseries.data), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def exp(self, timeseries, **kwargs):
+        return timeseries.__class__(np.exp(timeseries.data), **kwargs)
 
-    def abs(self, timeseries):
-        return timeseries.__class__(np.abs(timeseries.data), timeseries.dimension_labels,
-                                    timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def abs(self, timeseries, **kwargs):
+        return timeseries.__class__(np.abs(timeseries.data), **kwargs)
 
     def power(self, timeseries):
         return np.sum(self.square(self.normalize(timeseries, "mean", axis=0)).squeezed, axis=0)
 
-    def square(self, timeseries):
-        return timeseries.__class__(timeseries.data ** 2, timeseries.dimension_labels,
-                                   timeseries.time_start, timeseries.time_step, timeseries.time_unit)
+    def square(self, timeseries, **kwargs):
+        return timeseries.__class__(timeseries.data ** 2, **kwargs)
 
     def correlation(self, timeseries):
         return np.corrcoef(timeseries.squeezed.T)
@@ -193,14 +178,14 @@ class Timeseries4DService(object):
         else:
             out_timeseries = out_timeseries.get_subspace_by_labels(labels)
         for id, timeseries in enumerate(timeseries_list[1:]):
-            if np.float32(out_timeseries.time_step) == np.float32(timeseries.time_step):
+            if np.float32(out_timeseries.sample_period) == np.float32(timeseries.sample_period):
                 out_timeseries.data = np.concatenate([out_timeseries.data,
                                                       timeseries.get_subspace_by_labels(labels).data], axis=0)
             else:
-                raise_value_error("Timeseries4D concatenation in time failed!\n"
-                                  "Timeseries4D %d have a different time step (%s) than the ones before(%s)!" \
-                                  % (id, str(np.float32(timeseries.time_step)),
-                                     str(np.float32(out_timeseries.time_step))))
+                raise_value_error("Timeseries concatenation in time failed!\n"
+                                  "Timeseries %d have a different time step (%s) than the ones before(%s)!" \
+                                  % (id, str(np.float32(timeseries.sample_period)),
+                                     str(np.float32(out_timeseries.sample_period))))
         return out_timeseries
 
     def select_by_metric(self, timeseries, metric, metric_th=None, metric_percentile=None, nvals=None):
@@ -251,7 +236,7 @@ class Timeseries4DService(object):
                 rois[ir] = all_labels[roi]
         return timeseries.get_subspace_by_labels(rois), rois
 
-    def compute_seeg(self, source_timeseries, sensors, sum_mode="lin"):
+    def compute_seeg(self, source_timeseries, sensors, sum_mode="lin", **kwargs):
         if np.all(sum_mode == "exp"):
             seeg_fun = lambda source, gain_matrix: compute_seeg_exp(source.squeezed, gain_matrix)
         else:
@@ -260,18 +245,22 @@ class Timeseries4DService(object):
             seeg = OrderedDict()
             for sensor_name, sensor in sensors.items():
                 seeg[sensor_name] = source_timeseries.__class__(seeg_fun(source_timeseries, sensor.gain_matrix),
-                                                                {Timeseries4dDimensions.SPACE.value: sensor.labels,
-                                                                 Timeseries4dDimensions.VARIABLES.value: [sensor.name]},
-                                                                source_timeseries.time_start,
-                                                                source_timeseries.time_step,
-                                                                source_timeseries.time_unit)
+                                                                labels_dimensions=
+                                                                  {TimeseriesDimensions.SPACE.value: sensor.labels,
+                                                                   TimeseriesDimensions.VARIABLES.value: [sensor.name]},
+                                                                start_time=source_timeseries.start_time,
+                                                                sample_period=source_timeseries.sample_period,
+                                                                sample_period_unit=source_timeseries.sample_period_unit,
+                                                                ts_type="SEEG", sensors=sensors, **kwargs)
             return seeg
         else:
             return source_timeseries.__class__(seeg_fun(source_timeseries, sensors.gain_matrix),
-                                               {Timeseries4dDimensions.SPACE.value: sensors.labels,
-                                                Timeseries4dDimensions.VARIABLES.value: [sensors.name]},
-                                               source_timeseries.time_start, source_timeseries.time_step,
-                                               source_timeseries.time_unit)
+                                               labels_dimensions={TimeseriesDimensions.SPACE.value: sensors.labels,
+                                                                  TimeseriesDimensions.VARIABLES.value: [sensors.name]},
+                                               start_time=source_timeseries.start_time,
+                                               sample_period=source_timeseries.sample_period,
+                                               sample_period_unit=source_timeseries.sample_period_unit,
+                                               ts_type="SEEG", sensors=sensors, **kwargs)
 
 
 def compute_seeg_lin(source_timeseries, gain_matrix):

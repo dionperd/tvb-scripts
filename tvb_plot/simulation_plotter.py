@@ -19,7 +19,7 @@ class SimulationPlotter(TimeseriesPlotter):
         for sensors_name, imag_ts in imag_dict.items():
             title = title_prefix + "Simulated " + sensors_name + " raster plot"
             figs.append(self.plot_raster({measure: imag_ts.squeezed}, imag_ts.time,
-                                         time_units=imag_ts.time_unit, title=title, offset=0.1,
+                                         time_units=imag_ts.sample_period_unit, title=title, offset=0.1,
                                          labels=imag_ts.space_labels,
                                          figsize=FiguresConfig.VERY_LARGE_SIZE))
         return tuple(figs)
@@ -30,12 +30,12 @@ class SimulationPlotter(TimeseriesPlotter):
     #     if len(title_prefix) > 0:
     #         title_prefix = title_prefix + ", " + model._ui_name + ": "
     #     region_labels = timeseries.space_labels
-    #     state_variables = timeseries.dimension_labels[Timeseries4dDimensions.VARIABLES.value]
+    #     state_variables = timeseries.labels_dimensions[TimeseriesDimensions.VARIABLES.value]
     #     source_ts = timeseries.get_source()
     #     start_plot = int(numpy.round(0.01 * source_ts.data.shape[0]))
     #     figs.append(self.plot_raster({'source(t)': source_ts.squeezed[start_plot:, :]},
     #                                  timeseries.time.flatten()[start_plot:],
-    #                                  time_units=timeseries.time_unit, special_idx=seizure_indices,
+    #                                  time_units=timeseries.sample_period_unit, special_idx=seizure_indices,
     #                                  title=title_prefix + "Simulated source rasterplot", offset=0.1,
     #                                  labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))
     #
@@ -43,7 +43,7 @@ class SimulationPlotter(TimeseriesPlotter):
     #         # We assume that at least x1 and z are available in res
     #         sv_dict = {'x1(t)': timeseries.x1.squeezed, 'z(t)': timeseries.z.squeezed}
     #
-    #         figs.append(self.plot_timeseries(sv_dict, timeseries.time, time_units=timeseries.time_unit,
+    #         figs.append(self.plot_ts(sv_dict, timeseries.time, time_units=timeseries.sample_period_unit,
     #                                          special_idx=seizure_indices, title=title_prefix + "Simulated TAVG",
     #                                          labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))
     #
@@ -55,14 +55,14 @@ class SimulationPlotter(TimeseriesPlotter):
     #         # We assume that at least source and z are available in res
     #         sv_dict = {'source(t)': source_ts.squeezed, 'z(t)': timeseries.z.squeezed}
     #
-    #         figs.append(self.plot_timeseries(sv_dict, timeseries.time, time_units=timeseries.time_unit,
+    #         figs.append(self.plot_ts(sv_dict, timeseries.time, time_units=timeseries.sample_period_unit,
     #                                          special_idx=seizure_indices, title=title_prefix + "Simulated source-z",
     #                                          labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))
     #
     #         if PossibleVariables.X1.value in state_variables and PossibleVariables.Y1.value in state_variables:
     #             sv_dict = {'x1(t)': timeseries.x1.squeezed, 'y1(t)': timeseries.y1.squeezed}
     #
-    #             figs.append(self.plot_timeseries(sv_dict, timeseries.time, time_units=timeseries.time_unit,
+    #             figs.append(self.plot_ts(sv_dict, timeseries.time, time_units=timeseries.sample_period_unit,
     #                                              special_idx=seizure_indices, title=title_prefix + "Simulated pop1",
     #                                              labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))
     #         if PossibleVariables.X2.value in state_variables and PossibleVariables.Y2.value in state_variables and \
@@ -70,13 +70,13 @@ class SimulationPlotter(TimeseriesPlotter):
     #             sv_dict = {'x2(t)': timeseries.x2.squeezed, 'y2(t)': timeseries.y2.squeezed,
     #                        'g(t)': timeseries.g.squeezed}
     #
-    #             figs.append(self.plot_timeseries(sv_dict, timeseries.time, time_units=timeseries.time_unit,
+    #             figs.append(self.plot_ts(sv_dict, timeseries.time, time_units=timeseries.sample_period_unit,
     #                                              special_idx=seizure_indices, title=title_prefix + "Simulated pop2-g",
     #                                              labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))
     #
     #         if spectral_raster_plot:
     #             figs.append(self.plot_spectral_analysis_raster(timeseries.time, source_ts.squeezed,
-    #                                                            time_units=timeseries.time_unit, freq=None,
+    #                                                            time_units=timeseries.sample_period_unit, freq=None,
     #                                                            spectral_options=spectral_options,
     #                                                            special_idx=seizure_indices,
     #                                                            title=title_prefix + "Simulated Spectral Analysis",
@@ -89,7 +89,7 @@ class SimulationPlotter(TimeseriesPlotter):
     #                            'slope': timeseries.slope_t.squeezed, 'Iext2': timeseries.Iext2_t.squeezed}
     #                 title = model._ui_name + ": Simulated controlled parameters"
     #
-    #                 figs.append(self.plot_timeseries(sv_dict, timeseries.time, time_units=timeseries.time_unit,
+    #                 figs.append(self.plot_ts(sv_dict, timeseries.time, time_units=timeseries.sample_period_unit,
     #                                                  special_idx=seizure_indices, title=title_prefix + title,
     #                                                  labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))
     #             if PossibleVariables.X0_T.value in state_variables and PossibleVariables.IEXT1_T.value in state_variables \
@@ -97,7 +97,7 @@ class SimulationPlotter(TimeseriesPlotter):
     #                 sv_dict = {'x0_values': timeseries.x0_t.squeezed, 'Iext1': timeseries.Iext1_t.squeezed,
     #                            'K': timeseries.K_t.squeezed}
     #
-    #                 figs.append(self.plot_timeseries(sv_dict, timeseries.time, time_units=timeseries.time_unit,
+    #                 figs.append(self.plot_ts(sv_dict, timeseries.time, time_units=timeseries.sample_period_unit,
     #                                                  special_idx=seizure_indices,
     #                                                  title=title_prefix + "Simulated parameters",
     #                                                  labels=region_labels, figsize=FiguresConfig.VERY_LARGE_SIZE))

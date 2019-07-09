@@ -1,4 +1,5 @@
 # coding=utf-8
+from collections import OrderedDict
 
 from tvb_config.config import Config, FiguresConfig
 import matplotlib
@@ -27,6 +28,7 @@ class TimeseriesPlotter(BasePlotter):
 
     def __init__(self, config=Config):
         super(TimeseriesPlotter, self).__init__(config)
+        self.interactive_plotter = None
         self.print_ts_indices = self.print_regions_indices
         self.HighlightingDataCursor = lambda *args, **kwargs: None
         if matplotlib.get_backend() in matplotlib.rcsetup.interactive_bk and self.config.figures.MOUSE_HOOVER:
@@ -45,7 +47,7 @@ class TimeseriesPlotter(BasePlotter):
         return {"linestyle": self.linestyle, "linewidth": self.linewidth,
                 "marker": self.marker, "markersize": self.markersize, "markerfacecolor": self.markerfacecolor}
 
-    def _timeseries_plot(self, time, n_vars, nTS, n_times, time_units, subplots, offset=0.0, data_lims=[]):
+    def _ts_plot(self, time, n_vars, nTS, n_times, time_units, subplots, offset=0.0, data_lims=[]):
 
         def assert_time(time, n_times):
             if time_units.find("ms"):
@@ -223,9 +225,9 @@ class TimeseriesPlotter(BasePlotter):
                subtitle, subtitle_col, axlabels, axlimits
 
     # TODO: refactor to not have the plot commands here
-    def plot_timeseries(self, data_dict, time=None, mode="ts", subplots=None, special_idx=[], subtitles=[], labels=[],
-                        offset=0.5, time_units="ms", title='Time series', figure_name=None,
-                        figsize=FiguresConfig.LARGE_SIZE):
+    def plot_ts(self, data_dict, time=None, mode="ts", subplots=None, special_idx=[], subtitles=[], labels=[],
+                offset=0.5, time_unit="ms", title='Time series', figure_name=None,
+                figsize=FiguresConfig.LARGE_SIZE):
         n_vars = len(data_dict)
         vars = data_dict.keys()
         data = data_dict.values()
@@ -265,12 +267,12 @@ class TimeseriesPlotter(BasePlotter):
             if isequal_string(mode, "raster"):
                 data_fun, time, plot_lines, projection, n_rows, n_cols, def_alpha, loopfun, \
                 subtitle, subtitle_col, axlabels, axlimits, axYticks = \
-                    self._timeseries_plot(time, n_vars, nTS, n_times, time_units, 0, offset, data_lims)
+                    self._ts_plot(time, n_vars, nTS, n_times, time_unit, 0, offset, data_lims)
 
             else:
                 data_fun, time, plot_lines, projection, n_rows, n_cols, def_alpha, loopfun, \
                 subtitle, subtitle_col, axlabels, axlimits, axYticks = \
-                    self._timeseries_plot(time, n_vars, nTS, n_times, time_units, ensure_list(subplots)[0])
+                    self._ts_plot(time, n_vars, nTS, n_times, time_unit, ensure_list(subplots)[0])
         alpha_ratio = 1.0 / nSamples
         alphas = numpy.maximum(numpy.array([def_alpha] * nTS) * alpha_ratio, 0.1)
         alphas[special_idx] = numpy.maximum(alpha_ratio, 0.1)
@@ -326,13 +328,13 @@ class TimeseriesPlotter(BasePlotter):
 
     def plot_raster(self, data_dict, time, time_units="ms", special_idx=[], title='Raster plot', subtitles=[],
                     labels=[], offset=0.5, figure_name=None, figsize=FiguresConfig.VERY_LARGE_SIZE):
-        return self.plot_timeseries(data_dict, time, "raster", None, special_idx, subtitles, labels, offset, time_units,
-                                    title, figure_name, figsize)
+        return self.plot_ts(data_dict, time, "raster", None, special_idx, subtitles, labels, offset, time_units,
+                            title, figure_name, figsize)
 
     def plot_trajectories(self, data_dict, subtitles=None, special_idx=[], labels=[], title='State space trajectories',
                           figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
-        return self.plot_timeseries(data_dict, [], "traj", subtitles, special_idx, labels=labels, title=title,
-                                     figure_name=figure_name, figsize=figsize)
+        return self.plot_ts(data_dict, [], "traj", subtitles, special_idx, labels=labels, title=title,
+                            figure_name=figure_name, figsize=figsize)
 
     # TODO: refactor to not have the plot commands here
     def plot_spectral_analysis_raster(self, time, data, time_units="ms", freq=None, spectral_options={},
@@ -423,3 +425,29 @@ class TimeseriesPlotter(BasePlotter):
         self._save_figure(pyplot.gcf(), figure_name)
         self._check_show()
         return fig, ax, img, line, time, freq, stf, psd
+
+    def plot_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
+                        offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+        ts = OrderedDict()
+        for iv, var in enumerate(timeseries.variables_labels):
+            ts.update({var: getattr(timeseries, var).squeezed})
+        return self.plot_ts(ts, timeseries.time, mode, subplots, special_idx, subtitles, timeseries.space_labels,
+                            offset, timeseries.time_unit, timeseries.title, figure_name, figsize)
+
+    def plot_timeseries_interactive(self, timeseries, **kwargs):
+        from tvb_plot.timeseries_interactive_plotter import TimeseriesInteractivePlotter
+        interactive_plotters = []
+        for var in timeseries.variables_labels:
+            interactive_plotters.append(
+                TimeseriesInteractivePlotter(time_series=getattr(timeseries, var)._tvb, **kwargs))
+            interactive_plotters[-1].configure()
+            interactive_plotters[-1].show()
+
+    def plot_power_spectra_interactive(self, timeseries, **kwargs):
+        from tvb.simulator.plot.power_spectra_interactive import PowerSpectraInteractive
+        interactive_plotters = []
+        for var in timeseries.variables_labels:
+            interactive_plotters.append(
+                PowerSpectraInteractive(time_series=getattr(timeseries, var)._tvb, **kwargs))
+            interactive_plotters[-1].configure()
+            interactive_plotters[-1].show()

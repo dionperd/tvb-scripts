@@ -14,7 +14,7 @@ from tvb_head.model.head import Head
 from tvb_head.model.sensors import \
     Sensors, SensorTypesToClassesDict, SensorsH5Field, SensorTypesToProjectionDict
 from tvb_head.model.surface import CorticalSurface, SubcorticalSurface, SurfaceH5Field
-from tvb_timeseries.model.timeseries4d import Timeseries4dDimensions, Timeseries4D
+from tvb_timeseries.model.timeseries import TimeseriesDimensions, Timeseries
 from tvb_io.h5_writer import H5Writer
 
 from tvb.datatypes import region_mapping, structural
@@ -261,7 +261,7 @@ class H5Reader(object):
     def read_ts(self, path):
         """
         :param path: Path towards a valid TimeSeries H5 file
-        :return: Timeseries4D data and time in 2 numpy arrays
+        :return: Timeseries data and time in 2 numpy arrays
         """
         self.logger.info("Starting to read TimeSeries from: %s" % path)
         h5_file = h5py.File(path, 'r', libver='latest')
@@ -278,10 +278,10 @@ class H5Reader(object):
 
         return time, data
 
-    def read_timeseries(self, path, timeseries=Timeseries4D):
+    def read_timeseries(self, path, timeseries=Timeseries):
         """
         :param path: Path towards a valid TimeSeries H5 file
-        :return: Timeseries4D data and time in 2 numpy arrays
+        :return: Timeseries data and time in 2 numpy arrays
         """
         self.logger.info("Starting to read TimeSeries from: %s" % path)
         h5_file = h5py.File(path, 'r', libver='latest')
@@ -290,14 +290,16 @@ class H5Reader(object):
         time = h5_file['/time'][()]
         labels = h5_file['/labels'][()]
         variables = h5_file['/variables'][()]
-        time_unit = h5_file.attrs["time_unit"]
+        time_unit = h5_file.attrs["sample_period_unit"]
+        ts_type = h5_file.attrs.get("time_series_type", "")
         self.logger.info("First Channel sv sum: " + str(numpy.sum(data[:, 0])))
-        self.logger.info("Successfully read Timeseries4D!")  #: %s" % data)
+        self.logger.info("Successfully read Timeseries!")  #: %s" % data)
         h5_file.close()
 
-        return timeseries(data, {Timeseries4dDimensions.SPACE.value: labels,
-                                 Timeseries4dDimensions.VARIABLES.value: variables},
-                          time[0], numpy.mean(numpy.diff(time)), time_unit)
+        return timeseries(data, labels_dimensions={TimeseriesDimensions.SPACE.value: labels,
+                                                   TimeseriesDimensions.VARIABLES.value: variables},
+                          stat_time=time[0], sample_period_units=numpy.mean(numpy.diff(time)),
+                          sample_period_unit=time_unit, ts_type=ts_type)
 
     def read_dictionary(self, path, type=None):
         """
