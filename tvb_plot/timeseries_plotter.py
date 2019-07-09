@@ -426,28 +426,64 @@ class TimeseriesPlotter(BasePlotter):
         self._check_show()
         return fig, ax, img, line, time, freq, stf, psd
 
+    def _plot_timeseries(self, data, variables_labels, time, time_unit, title, labels,
+                         mode="ts", subplots=None, special_idx=[], subtitles=[],
+                        offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+        if figure_name is None:
+            figure_name = title
+        if len(title) == 0:
+            figure_name = "_".join(variables_labels)
+        n_vars = data.shape[1]
+        if len(variables_labels) != n_vars:
+            variables_labels = []
+            for i_var in range(n_vars):
+                variables_labels.append("Var%d" % i_var)
+        ts = OrderedDict()
+        for i_var, var in enumerate(variables_labels):
+            ts.update({var: data[:, i_var].squeeze()})
+        return self.plot_ts(ts, time, mode, subplots, special_idx, subtitles, labels,
+                            offset, time_unit, title, figure_name, figsize)
+
     def plot_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
                         offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
-        ts = OrderedDict()
-        for iv, var in enumerate(timeseries.variables_labels):
-            ts.update({var: getattr(timeseries, var).squeezed})
-        return self.plot_ts(ts, timeseries.time, mode, subplots, special_idx, subtitles, timeseries.space_labels,
-                            offset, timeseries.time_unit, timeseries.title, figure_name, figsize)
+        return self._plot_timeseries(timeseries.data, timeseries.variables_labels,
+                                     timeseries.time, timeseries.time_unit, timeseries.title, timeseries.space_labels,
+                                     mode, subplots, special_idx, subtitles, offset, figure_name, figsize)
 
-    def plot_timeseries_interactive(self, timeseries, **kwargs):
+    def plot_tvb_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
+                            offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+        variables_labels = timeseries.labels_dimensions.get(timeseries.labels_ordering[1], [])
+        return self._plot_timeseries(timeseries.data, variables_labels, timeseries.time,
+                                    timeseries.sample_period_unit, timeseries.title, timeseries.get_space_labels(),
+                                    mode, subplots, special_idx, subtitles, offset, figure_name, figsize)
+
+    def plot_timeseries_raster(self, timeseries, subplots=None, special_idx=[], subtitles=[],
+                               offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+        return self.plot_timeseries(timeseries, "raster", subplots, special_idx, subtitles,
+                                    offset, figure_name, figsize)
+
+    def plot_tvb_timeseries_raster(self, timeseries, subplots=None, special_idx=[], subtitles=[],
+                                   offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+        return self.plot_tvb_timeseries(timeseries, "raster", subplots, special_idx, subtitles,
+                                        offset, figure_name, figsize)
+    @staticmethod
+    def plot_tvb_timeseries_interactive(timeseries, first_n=-1, **kwargs):
         from tvb_plot.timeseries_interactive_plotter import TimeseriesInteractivePlotter
-        interactive_plotters = []
-        for var in timeseries.variables_labels:
-            interactive_plotters.append(
-                TimeseriesInteractivePlotter(time_series=getattr(timeseries, var)._tvb, **kwargs))
-            interactive_plotters[-1].configure()
-            interactive_plotters[-1].show()
+        interactive_plotter = TimeseriesInteractivePlotter(time_series=timeseries, first_n=first_n)
+        interactive_plotter.configure()
+        block = kwargs.pop("block", True)
+        interactive_plotter.show(block=block, **kwargs)
 
-    def plot_power_spectra_interactive(self, timeseries, **kwargs):
+    def plot_timeseries_interactive(self, timeseries, first_n=-1, **kwargs):
+        self.plot_tvb_timeseries_interactive(timeseries._tvb, first_n, **kwargs)
+
+    @staticmethod
+    def plot_tvb_power_spectra_interactive(timeseries, spectral_props, **kwargs):
         from tvb.simulator.plot.power_spectra_interactive import PowerSpectraInteractive
-        interactive_plotters = []
-        for var in timeseries.variables_labels:
-            interactive_plotters.append(
-                PowerSpectraInteractive(time_series=getattr(timeseries, var)._tvb, **kwargs))
-            interactive_plotters[-1].configure()
-            interactive_plotters[-1].show()
+        interactive_plotters = PowerSpectraInteractive(time_series=timeseries, **spectral_props)
+        interactive_plotters.configure()
+        block = kwargs.pop("block", True)
+        interactive_plotters.show(blocl=block, **kwargs)
+
+    def plot_power_spectra_interactive(self, timeseries, spectral_props, **kwargs):
+        self.plot_tvb_power_spectra_interactive(self, timeseries._tvb, spectral_props, **kwargs)

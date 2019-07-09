@@ -14,7 +14,7 @@ from tvb_head.model.head import Head
 from tvb_head.model.sensors import \
     Sensors, SensorTypesToClassesDict, SensorsH5Field, SensorTypesToProjectionDict
 from tvb_head.model.surface import CorticalSurface, SubcorticalSurface, SurfaceH5Field
-from tvb_timeseries.model.timeseries import TimeseriesDimensions, Timeseries
+from tvb_timeseries.model.timeseries import LABELS_ORDERING, Timeseries
 from tvb_io.h5_writer import H5Writer
 
 from tvb.datatypes import region_mapping, structural
@@ -289,17 +289,22 @@ class H5Reader(object):
         data = h5_file['/data'][()]
         time = h5_file['/time'][()]
         labels = h5_file['/labels'][()]
+        try:
+            labels_ordering = (h5_file['/dimensions_labels'][()]).tolist()
+        except:
+            labels_ordering = LABELS_ORDERING
         variables = h5_file['/variables'][()]
         time_unit = h5_file.attrs["sample_period_unit"]
         ts_type = h5_file.attrs.get("time_series_type", "")
+        title = h5_file.attrs.get("title", "")
         self.logger.info("First Channel sv sum: " + str(numpy.sum(data[:, 0])))
         self.logger.info("Successfully read Timeseries!")  #: %s" % data)
         h5_file.close()
 
-        return timeseries(data, labels_dimensions={TimeseriesDimensions.SPACE.value: labels,
-                                                   TimeseriesDimensions.VARIABLES.value: variables},
-                          stat_time=time[0], sample_period_units=numpy.mean(numpy.diff(time)),
-                          sample_period_unit=time_unit, ts_type=ts_type)
+        return timeseries(data, labels_ordering=labels_ordering,
+                          labels_dimensions={labels_ordering[2]: labels, labels_ordering[1]: variables},
+                          stat_time=time[0], sample_period=numpy.mean(numpy.diff(time)),
+                          sample_period_unit=time_unit, ts_type=ts_type, title=title)
 
     def read_dictionary(self, path, type=None):
         """

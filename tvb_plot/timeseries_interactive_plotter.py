@@ -1,12 +1,19 @@
 # coding=utf-8
 import numpy
 
-from tvb.simulator.plot.timeseries_interactive import TimeSeriesInteractive, pylab
+from tvb_utils.log_error_utils import initialize_logger
+from tvb_utils.data_structures_utils import ensure_list, rotate_n_list_elements
+from tvb.simulator.plot.timeseries_interactive import TimeSeriesInteractive, pylab, time_series_datatypes
+
+from matplotlib.pyplot import rcParams
+
+
+logger = initialize_logger(__name__)
 
 
 class TimeseriesInteractivePlotter(TimeSeriesInteractive):
 
-    def plot_time_series(self):
+    def plot_time_series(self, **kwargs):
         """ Plot a view on the timeseries. """
         # Set title and axis labels
         #time_series_type = self.time_series.__class__.__name__
@@ -31,15 +38,33 @@ class TimeseriesInteractivePlotter(TimeSeriesInteractive):
                          self.nsrs*[self.time[self.time_view[-1]]]],
                          numpy.vstack(2*(offset,)), "0.85")
 
-        data_shape = self.data.shape
-        if len(data_shape) > 3 and data_shape[3] > 1:
-            alpha = 1/data_shape[3]
-            self.ts_view = []
-            for ii in range(data_shape[3]):
-                # Plot the timeseries
-                self.ts_view.append(self.ts_ax.plot(self.time[self.time_view],
-                                                    offset + self.data[self.time_view, 0, :, ii],
-                                                    alpha=alpha))
+        linestyle = ensure_list(kwargs.pop("linestyle", "-"))
+        colors = kwargs.pop("linestyle", None)
+        if colors is not None:
+            colors = ensure_list(colors)
+        if self.data.shape[1] > 1:
+            linestyle = rotate_n_list_elements(linestyle, self.data.shape[1])
+            if not isinstance(colors, list):
+                colors = (rcParams['axes.prop_cycle']).by_key()['color']
+            colors = rotate_n_list_elements(colors, self.data.shape[1])
+        else:
+            # If no color,
+            # or a color sequence is given in the input
+            # but there is only one variable to plot,
+            # choose the black color
+            if colors is None or len(colors) > 1:
+                colors = ["k"]
+            linestyle = linestyle[:1]
+        for i_var in range(self.data.shape[1]):
+            if len(self.data.shape) > 3 and self.data.shape[3] > 1:
+                alpha = 1/self.data.shape[3]
+                self.ts_view = []
+                for ii in range(self.data.shape[3]):
+                    # Plot the timeseries
+                    self.ts_view.append(self.ts_ax.plot(self.time[self.time_view],
+                                                        offset + self.data[self.time_view, i_var, :, ii],
+                                                        alpha=alpha, color=colors[i_var], linestyle=linestyle[i_var],
+                                                        **kwargs))
         #Plot the timeseries
         self.ts_view = self.ts_ax.plot(self.time[self.time_view],
                                        offset + self.data[self.time_view, 0, :, 0])
@@ -50,3 +75,35 @@ class TimeseriesInteractivePlotter(TimeSeriesInteractive):
                                              'b-', linewidth=4)
 
         pylab.draw()
+
+    def show(self, block=True, **kwargs):
+        """ Generate the interactive time-series figure. """
+        time_series_type = self.time_series.__class__.__name__
+        msg = "Generating an interactive time-series plot for %s"
+        if isinstance(self.time_series, time_series_datatypes.TimeSeriesSurface):
+            logger.warning("Intended for region and sensors, not surfaces.")
+        logger.info(msg % time_series_type)
+
+        # Make the figure:
+        self.create_figure()
+
+        # Selectors
+        # self.add_mode_selector()
+
+        # Sliders
+        self.add_window_length_slider()
+        self.add_scaling_slider()
+        # self.add_time_slider()
+
+        # time-view buttons
+        self.add_step_back_button()
+        self.add_step_forward_button()
+        self.add_big_step_back_button()
+        self.add_big_step_forward_button()
+        self.add_start_button()
+        self.add_end_button()
+
+        # Plot timeseries
+        self.plot_time_series()
+
+        pylab.show(block=block, **kwargs)

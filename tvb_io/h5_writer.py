@@ -257,12 +257,14 @@ class H5Writer(H5WriterBase):
             if len(raw_data.shape) == 4 and str(raw_data.data.dtype)[0] == "f":
                 h5_file.create_dataset("/data", data=raw_data.data)
                 h5_file.create_dataset("/time", data=raw_data.time)
+                h5_file.create_dataset("/dimensions_labels", data=numpy.array(raw_data.labels_ordering))
                 h5_file.create_dataset("/labels",
                                        data=numpy.array([numpy.string_(label) for label in raw_data.space_labels]))
                 h5_file.create_dataset("/variables",
                                        data=numpy.array([numpy.string_(var) for var in raw_data.variables_labels]))
                 h5_file.attrs.create("sample_period_unit", raw_data.sample_period_unit)
                 h5_file.attrs.create("time_series_type", raw_data.ts_type)
+                h5_file.attrs.create("title", raw_data.title)
                 write_metadata({KEY_MAX: raw_data.data.max(), KEY_MIN: raw_data.data.min(),
                                 KEY_STEPS: raw_data.data.shape[0], KEY_CHANNELS: raw_data.data.shape[1],
                                 KEY_SV: 1, KEY_SAMPLING: raw_data.sample_period,

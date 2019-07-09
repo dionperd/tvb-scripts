@@ -12,7 +12,7 @@ class Plotter(object):
     def plot_head(self, head):
         return HeadPlotter(self.config).plot_head(head)
 
-    def plot_timeseries(self, *args, **kwargs):
+    def plot_ts(self, *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_ts(*args, **kwargs)
 
     def plot_raster(self,  *args, **kwargs):
@@ -24,8 +24,26 @@ class Plotter(object):
     def plot_spectral_analysis_raster(self, *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_spectral_analysis_raster(self, *args, **kwargs)
 
+    def plot_timeseries(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_timeseries(*args, **kwargs)
+
+    def plot_tvb_timeseries(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_tvb_timeseries(*args, **kwargs)
+
+    def plot_timeseries_raster(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_timeseries_raster(*args, **kwargs)
+
+    def plot_tvb_timeseries_raster(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_tvb_timeseries_raster(*args, **kwargs)
+
     def plot_timeseries_interactive(self, *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_timeseries_interactive(*args, **kwargs)
 
+    def plot_tvb_timeseries_interactive(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_tvb_timeseries_interactive(*args, **kwargs)
+
     def plot_power_spectra_interactive(self, *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_power_spectra_interactive(*args, **kwargs)
+
+    def plot_tvb_power_spectra_interactive(self, *args, **kwargs):
+        return TimeseriesPlotter(self.config).plot_tvb_power_spectra_interactive(*args, **kwargs)

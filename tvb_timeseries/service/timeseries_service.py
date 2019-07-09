@@ -1,4 +1,5 @@
 # coding=utf-8
+from six import string_types
 from collections import OrderedDict
 from itertools import izip, cycle
 
@@ -12,7 +13,7 @@ from tvb_utils.data_structures_utils import isequal_string, ensure_list
 from tvb_utils.computations_utils import select_greater_values_array_inds,\
     select_by_hierarchical_group_metric_clustering
 from tvb_utils.analyzers_utils import abs_envelope, spectrogram_envelope, filter_data
-from tvb_timeseries.model.timeseries import TimeseriesDimensions
+from tvb_timeseries.model.timeseries import TimeseriesDimensions, LABELS_ORDERING
 
 
 def decimate_signals(signals, time, decim_ratio):
@@ -57,9 +58,8 @@ def normalize_signals(signals, normalization=None, axis=None, percent=None):
         ind[axis] = np.newaxis
         return x / y[ind]
 
-
     for norm, ax, prcnd in izip(ensure_list(normalization), cycle(ensure_list(axis)), cycle(ensure_list(percent))):
-        if isinstance(norm, basestring):
+        if isinstance(norm, string_types):
             if isequal_string(norm, "zscore"):
                 signals = zscore(signals, axis=ax)  # / 3.0
             elif isequal_string(norm, "baseline-std"):
@@ -136,36 +136,36 @@ class TimeseriesService(object):
         data, time = spectrogram_envelope(timeseries.squeezed, timeseries.sampling_frequency, lpf, hpf, nperseg)
         if len(timeseries.sample_period_unit) > 0 and timeseries.sample_period_unit[0] == "m":
             time *= 1000
-        return timeseries.__class__(data, start_time=timeseries.start_time + time[0],
+        return timeseries.duplicate(data=data, start_time=timeseries.start_time + time[0],
                                     sample_period=np.diff(time).mean(), **kwargs)
 
     def abs_envelope(self, timeseries, **kwargs):
-        return timeseries.__class__(abs_envelope(timeseries.data), **kwargs)
+        return timeseries.duplicate(data=abs_envelope(timeseries.data), **kwargs)
 
     def detrend(self, timeseries, type='linear', **kwargs):
-        return timeseries.__class__(detrend(timeseries.data, axis=0, type=type), **kwargs)
+        return timeseries.duplicate(data=detrend(timeseries.data, axis=0, type=type), **kwargs)
 
     def normalize(self, timeseries, normalization=None, axis=None, percent=None, **kwargs):
-        return timeseries.__class__(normalize_signals(timeseries.data, normalization, axis, percent), **kwargs)
+        return timeseries.duplicate(data=normalize_signals(timeseries.data, normalization, axis, percent), **kwargs)
 
     def filter(self, timeseries, lowcut=None, highcut=None, mode='bandpass', order=3, **kwargs):
-        return timeseries.__class__(filter_data(timeseries.data, timeseries.sampling_frequency,
+        return timeseries.duplicate(data=filter_data(timeseries.data, timeseries.sampling_frequency,
                                                 lowcut, highcut, mode, order), **kwargs)
 
     def log(self, timeseries, **kwargs):
-        return timeseries.__class__(np.log(timeseries.data), **kwargs)
+        return timeseries.duplicate(data=np.log(timeseries.data), **kwargs)
 
     def exp(self, timeseries, **kwargs):
-        return timeseries.__class__(np.exp(timeseries.data), **kwargs)
+        return timeseries.duplicate(data=np.exp(timeseries.data), **kwargs)
 
     def abs(self, timeseries, **kwargs):
-        return timeseries.__class__(np.abs(timeseries.data), **kwargs)
+        return timeseries.duplicate(data=np.abs(timeseries.data), **kwargs)
 
     def power(self, timeseries):
         return np.sum(self.square(self.normalize(timeseries, "mean", axis=0)).squeezed, axis=0)
 
     def square(self, timeseries, **kwargs):
-        return timeseries.__class__(timeseries.data ** 2, **kwargs)
+        return timeseries.duplicate(data=timeseries.data ** 2, **kwargs)
 
     def correlation(self, timeseries):
         return np.corrcoef(timeseries.squeezed.T)
@@ -232,7 +232,7 @@ class TimeseriesService(object):
 
     def select_by_rois(self, timeseries, rois, all_labels):
         for ir, roi in rois:
-            if not(isinstance(roi, basestring)):
+            if not(isinstance(roi, string_types)):
                 rois[ir] = all_labels[roi]
         return timeseries.get_subspace_by_labels(rois), rois
 
@@ -241,26 +241,25 @@ class TimeseriesService(object):
             seeg_fun = lambda source, gain_matrix: compute_seeg_exp(source.squeezed, gain_matrix)
         else:
             seeg_fun = lambda source, gain_matrix: compute_seeg_lin(source.squeezed, gain_matrix)
+        labels_ordering = LABELS_ORDERING
+        labels_ordering[1] = "SEEG"
+        labels_ordering[2] = "SEEG Sensor"
+        kwargs.update({"ts_type": "SEEG", "labels_ordering": labels_ordering,
+                       "start_time": source_timeseries.start_time,
+                       "sample_period": source_timeseries.sample_period,
+                       "sample_period_unit": source_timeseries.sample_period_unit})
         if isinstance(sensors, dict):
             seeg = OrderedDict()
             for sensor_name, sensor in sensors.items():
-                seeg[sensor_name] = source_timeseries.__class__(seeg_fun(source_timeseries, sensor.gain_matrix),
-                                                                labels_dimensions=
-                                                                  {TimeseriesDimensions.SPACE.value: sensor.labels,
-                                                                   TimeseriesDimensions.VARIABLES.value: [sensor.name]},
-                                                                start_time=source_timeseries.start_time,
-                                                                sample_period=source_timeseries.sample_period,
-                                                                sample_period_unit=source_timeseries.sample_period_unit,
-                                                                ts_type="SEEG", sensors=sensors, **kwargs)
+                kwargs.update({"labels_dimensions": {labels_ordering[2]: sensor.labels,
+                                                     labels_ordering[1]: [sensor.name]}})
+                seeg[sensor_name] = \
+                    source_timeseries.__class__(seeg_fun(source_timeseries, sensor.gain_matrix), **kwargs)
             return seeg
         else:
-            return source_timeseries.__class__(seeg_fun(source_timeseries, sensors.gain_matrix),
-                                               labels_dimensions={TimeseriesDimensions.SPACE.value: sensors.labels,
-                                                                  TimeseriesDimensions.VARIABLES.value: [sensors.name]},
-                                               start_time=source_timeseries.start_time,
-                                               sample_period=source_timeseries.sample_period,
-                                               sample_period_unit=source_timeseries.sample_period_unit,
-                                               ts_type="SEEG", sensors=sensors, **kwargs)
+            kwargs.update({"labels_dimensions": {labels_ordering[2]: sensors.labels,
+                                                 labels_ordering[1]: [sensors.name]}})
+            return source_timeseries.__class__(seeg_fun(source_timeseries, sensors.gain_matrix), **kwargs)
 
 
 def compute_seeg_lin(source_timeseries, gain_matrix):
