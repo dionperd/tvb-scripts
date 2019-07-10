@@ -38,6 +38,7 @@ class TimeseriesInteractivePlotter(TimeSeriesInteractive):
                          self.nsrs*[self.time[self.time_view[-1]]]],
                          numpy.vstack(2*(offset,)), "0.85")
 
+        # Determine colors and linestyles for each variable of the Timeseries
         linestyle = ensure_list(kwargs.pop("linestyle", "-"))
         colors = kwargs.pop("linestyle", None)
         if colors is not None:
@@ -55,19 +56,21 @@ class TimeseriesInteractivePlotter(TimeSeriesInteractive):
             if colors is None or len(colors) > 1:
                 colors = ["k"]
             linestyle = linestyle[:1]
+
+        # Determine the alpha value depending on the number of modes/samples of the Timeseries
+        alpha = 1.0
+        if len(self.data.shape) > 3 and self.data.shape[3] > 1:
+            alpha /= self.data.shape[3]
+
+        # Plot the timeseries per variable and sample
+        self.ts_view = []
         for i_var in range(self.data.shape[1]):
-            if len(self.data.shape) > 3 and self.data.shape[3] > 1:
-                alpha = 1/self.data.shape[3]
-                self.ts_view = []
-                for ii in range(self.data.shape[3]):
-                    # Plot the timeseries
-                    self.ts_view.append(self.ts_ax.plot(self.time[self.time_view],
-                                                        offset + self.data[self.time_view, i_var, :, ii],
-                                                        alpha=alpha, color=colors[i_var], linestyle=linestyle[i_var],
-                                                        **kwargs))
-        #Plot the timeseries
-        self.ts_view = self.ts_ax.plot(self.time[self.time_view],
-                                       offset + self.data[self.time_view, 0, :, 0])
+            for ii in range(self.data.shape[3]):
+                # Plot the timeseries
+                self.ts_view.append(self.ts_ax.plot(self.time[self.time_view],
+                                                    offset + self.data[self.time_view, i_var, :, ii],
+                                                    alpha=alpha, color=colors[i_var], linestyle=linestyle[i_var],
+                                                    **kwargs))
 
         self.hereiam[0].remove()
         self.hereiam = self.whereami_ax.plot(self.time_view,
