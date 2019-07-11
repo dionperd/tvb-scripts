@@ -101,37 +101,38 @@ class HeadPlotter(BasePlotter):
             weights_figure = None
         else:
             # weights matrix
-            weights_figure = pyplot.figure()
+            weights_figure = pyplot.figure(num="Connectivity weights", figsize=self.config.figures.LARGE_SIZE)
             weights_axes = weights_figure.gca()
             wimg = weights_axes.matshow(connectivity.weights[order_rows, order_columns])
             weights_figure.colorbar(wimg)
 
         weights_axes.set_title(plot_title)
 
-        if plot_tracts:
-            # tract lengths matrix
-            tracts_figure = pyplot.figure(num="tract-lengths")
-            tracts_axes = tracts_figure.gca()
-            timg = tracts_axes.matshow(connectivity.tract_lengths[order_rows, order_columns])
-            tracts_axes.set_title(plot_title)
-            tracts_figure.colorbar(timg)
-        else:
-            tracts_figure = None
-            tracts_axes = None
-
-        if labels is None:
-            return
         weights_axes.set_yticks(numpy.arange(connectivity.number_of_regions))
         weights_axes.set_yticklabels(list(labels[order]), fontsize=8)
 
         weights_axes.set_xticks(numpy.arange(connectivity.number_of_regions))
         weights_axes.set_xticklabels(list(labels[order]), fontsize=8, rotation=90)
 
+        self._save_figure(weights_figure, plot_title)
+        self._check_show()
+
         if plot_tracts:
+            # tract lengths matrix
+            tracts_figure = pyplot.figure(num="Tracts' lengths", figsize=self.config.figures.LARGE_SIZE)
+            tracts_axes = tracts_figure.gca()
+            timg = tracts_axes.matshow(connectivity.tract_lengths[order_rows, order_columns])
+            tracts_axes.set_title("Tracts' lengths")
+            tracts_figure.colorbar(timg)
             tracts_axes.set_yticks(numpy.arange(connectivity.number_of_regions))
             tracts_axes.set_yticklabels(list(labels[order]), fontsize=8)
 
             tracts_axes.set_xticks(numpy.arange(connectivity.number_of_regions))
             tracts_axes.set_xticklabels(list(labels[order]), fontsize=8, rotation=90)
 
-        return weights_figure, weights_axes, tracts_figure, tracts_axes
+            self._save_figure(tracts_figure)
+            self._check_show()
+            return weights_figure, weights_axes, tracts_figure, tracts_axes
+
+        else:
+            return weights_figure, weights_axes
