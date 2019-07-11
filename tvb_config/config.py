@@ -108,6 +108,7 @@ class FiguresConfig(object):
     SHOW_FLAG = False
     MOUSE_HOOVER = False
     MATPLOTLIB_BACKEND = "Qt4Agg"  # "Agg" # ,
+    FONTSIZE=10
 
 
 class CalculusConfig(object):
