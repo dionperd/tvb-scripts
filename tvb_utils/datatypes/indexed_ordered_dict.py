@@ -14,7 +14,8 @@ class IndexedOrderedDict(object):
 
     _dict = OrderedDict()
 
-    def __init__(self, input_dict=OrderedDict()):
+    # TODO: Find out error when initializing with no argument to __init__
+    def __init__(self, input_dict=OrderedDict({})):
         if not isinstance(input_dict, OrderedDict):
             if isinstance(input_dict, dict):
                 LOG.warning("input_dict is not an Ordered dict!\n"
