@@ -1,5 +1,5 @@
 # coding=utf-8
-
+from tvb_plot.base_plotter import BasePlotter
 from tvb_plot.head_plotter import HeadPlotter
 from tvb_plot.timeseries_plotter import TimeseriesPlotter
 
@@ -9,8 +9,14 @@ class Plotter(object):
     def __init__(self, config=None):
         self.config = config
 
+    def tvb_plot(self, plot_fun_name, *args, **kwargs):
+        return BasePlotter(self.config).tvb_plot(plot_fun_name, *args, **kwargs)
+
     def plot_head(self, head):
         return HeadPlotter(self.config).plot_head(head)
+
+    def plot_tvb_connectivity(self, *args, **kwargs):
+        return HeadPlotter(self.config).plot_tvb_connectivity(*args, **kwargs)
 
     def plot_ts(self, *args, **kwargs):
         return TimeseriesPlotter(self.config).plot_ts(*args, **kwargs)

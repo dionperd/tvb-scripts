@@ -59,16 +59,79 @@ class HeadPlotter(BasePlotter):
         self._check_show()
         return figure, ax, cax1
 
-    def plot_head(self, head):
+    def plot_head(self, head, plot_stats=False, plot_sensors=True):
         output = []
         output.append(self._plot_connectivity(head.connectivity))
-        output.append(self._plot_connectivity_stats(head.connectivity))
-        count = 1
-        for s_type, sensors_set in head.sensors.items():
-            for sensor, projection in sensors_set.items():
-                if isinstance(sensor, Sensors) and isinstance(projection, ProjectionMatrix):
-                    count, figure, ax, cax = \
-                        self._plot_sensors(sensor, projection.projection_data,
-                                           head.connectivity.region_labels, count)
-                    output.append((figure, ax, cax))
+        if plot_stats:
+            output.append(self._plot_connectivity_stats(head.connectivity))
+        if plot_sensors:
+            count = 1
+            for s_type, sensors_set in head.sensors.items():
+                for sensor, projection in sensors_set.items():
+                    if isinstance(sensor, Sensors) and isinstance(projection, ProjectionMatrix):
+                        count, figure, ax, cax = \
+                            self._plot_sensors(sensor, projection.projection_data,
+                                               head.connectivity.region_labels, count)
+                        output.append((figure, ax, cax))
         return tuple(output)
+
+    def plot_tvb_connectivity(self, connectivity, num="weights", order_by=None, plot_hinton=False, plot_tracts=True):
+        """
+        A 2D plot for visualizing the Connectivity.weights matrix
+        """
+        labels = connectivity.region_labels
+        plot_title = connectivity.__class__.__name__
+
+        if order_by is None:
+            order = numpy.arange(connectivity.number_of_regions)
+        else:
+            order = numpy.argsort(order_by)
+            if order.shape[0] != connectivity.number_of_regions:
+                self.logger.error("Ordering vector doesn't have length number_of_regions")
+                self.logger.error("Check ordering length and that connectivity is configured")
+                return
+
+        # Assumes order is shape (number_of_regions, )
+        order_rows = order[:, numpy.newaxis]
+        order_columns = order_rows.T
+
+        if plot_hinton:
+            from tvb.simulator.plot.tools import hinton_diagram
+            weights_axes = hinton_diagram(connectivity.weights[order_rows, order_columns], num)
+            weights_figure = None
+        else:
+            # weights matrix
+            weights_figure = pyplot.figure()
+            weights_axes = weights_figure.gca()
+            wimg = weights_axes.matshow(connectivity.weights[order_rows, order_columns])
+            weights_figure.colorbar(wimg)
+
+        weights_axes.set_title(plot_title)
+
+        if plot_tracts:
+            # tract lengths matrix
+            tracts_figure = pyplot.figure(num="tract-lengths")
+            tracts_axes = tracts_figure.gca()
+            timg = tracts_axes.matshow(connectivity.tract_lengths[order_rows, order_columns])
+            tracts_axes.set_title(plot_title)
+            tracts_figure.colorbar(timg)
+        else:
+            tracts_figure = None
+            tracts_axes = None
+
+        if labels is None:
+            return
+        weights_axes.set_yticks(numpy.arange(connectivity.number_of_regions))
+        weights_axes.set_yticklabels(list(labels[order]), fontsize=8)
+
+        weights_axes.set_xticks(numpy.arange(connectivity.number_of_regions))
+        weights_axes.set_xticklabels(list(labels[order]), fontsize=8, rotation=90)
+
+        if plot_tracts:
+            tracts_axes.set_yticks(numpy.arange(connectivity.number_of_regions))
+            tracts_axes.set_yticklabels(list(labels[order]), fontsize=8)
+
+            tracts_axes.set_xticks(numpy.arange(connectivity.number_of_regions))
+            tracts_axes.set_xticklabels(list(labels[order]), fontsize=8, rotation=90)
+
+        return weights_figure, weights_axes, tracts_figure, tracts_axes
