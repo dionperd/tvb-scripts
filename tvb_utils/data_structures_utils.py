@@ -1,7 +1,7 @@
 # coding=utf-8
 
 # Data structure manipulations and conversions
-
+from six import string_types
 import re
 import numpy as np
 from collections import OrderedDict
@@ -262,17 +262,19 @@ def dicts_of_lists_to_lists_of_dicts(dictionary):
 def ensure_list(arg):
     if not (isinstance(arg, list)):
         try:  # if iterable
-            if isinstance(arg, (basestring, dict)):
+            if isinstance(arg, (string_types, dict)):
                 arg = [arg]
-            else:
+            elif hasattr(arg, "__iter__"):
                 arg = list(arg)
+            else: # if not iterable
+                arg = [arg]
         except:  # if not iterable
             arg = [arg]
     return arg
 
 
 def ensure_string(arg):
-    if not (isinstance(arg, basestring)):
+    if not (isinstance(arg, string_types)):
         if arg is None:
             return ""
         else:
@@ -488,7 +490,7 @@ def assert_equal_objects(obj1, obj2, attributes_dict=None, logger=None):
         try:
             # TODO: a better hack for the stupid case of an ndarray of a string, such as model.zmode or pmode
             # For non numeric types
-            if isinstance(field1, basestring) or isinstance(field1, list) or isinstance(field1, dict) \
+            if isinstance(field1, string_types) or isinstance(field1, list) or isinstance(field1, dict) \
                     or (isinstance(field1, np.ndarray) and field1.dtype.kind in 'OSU'):
                 if np.any(field1 != field2):
                     print_not_equal_message(attributes_dict[attribute], field1, field2, logger)
