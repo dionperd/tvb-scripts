@@ -1,9 +1,7 @@
 # coding=utf-8
 from collections import OrderedDict
 
-from tvb_config.config import Config, FiguresConfig
 import matplotlib
-matplotlib.use(FiguresConfig().MATPLOTLIB_BACKEND)
 from matplotlib import pyplot, gridspec
 from matplotlib.colors import Normalize
 
@@ -26,7 +24,7 @@ class TimeseriesPlotter(BasePlotter):
     tick_font_size = 12
     print_ts_indices = True
 
-    def __init__(self, config=Config):
+    def __init__(self, config=None):
         super(TimeseriesPlotter, self).__init__(config)
         self.interactive_plotter = None
         self.print_ts_indices = self.print_regions_indices
@@ -227,7 +225,9 @@ class TimeseriesPlotter(BasePlotter):
     # TODO: refactor to not have the plot commands here
     def plot_ts(self, data_dict, time=None, mode="ts", subplots=None, special_idx=[], subtitles=[], labels=[],
                 offset=0.5, time_unit="ms", title='Time series', figure_name=None,
-                figsize=FiguresConfig.LARGE_SIZE):
+                figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         n_vars = len(data_dict)
         vars = data_dict.keys()
         data = data_dict.values()
@@ -327,19 +327,25 @@ class TimeseriesPlotter(BasePlotter):
         return pyplot.gcf(), axes, lines
 
     def plot_raster(self, data_dict, time, time_units="ms", special_idx=[], title='Raster plot', subtitles=[],
-                    labels=[], offset=0.5, figure_name=None, figsize=FiguresConfig.VERY_LARGE_SIZE):
+                    labels=[], offset=0.5, figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
         return self.plot_ts(data_dict, time, "raster", None, special_idx, subtitles, labels, offset, time_units,
                             title, figure_name, figsize)
 
     def plot_trajectories(self, data_dict, subtitles=None, special_idx=[], labels=[], title='State space trajectories',
-                          figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+                          figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         return self.plot_ts(data_dict, [], "traj", subtitles, special_idx, labels=labels, title=title,
                             figure_name=figure_name, figsize=figsize)
 
     # TODO: refactor to not have the plot commands here
     def plot_spectral_analysis_raster(self, time, data, time_units="ms", freq=None, spectral_options={},
                                       special_idx=[], labels=[], title='Spectral Analysis', figure_name=None,
-                                      figsize=FiguresConfig.VERY_LARGE_SIZE):
+                                      figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
         nS = data.shape[1]
         n_special_idx = len(special_idx)
         if n_special_idx > 0:
@@ -383,7 +389,7 @@ class TimeseriesPlotter(BasePlotter):
         min_val = numpy.min(stf.flatten())
         max_val = numpy.max(stf.flatten())
         if nS > 2:
-            figsize = FiguresConfig.VERY_LARGE_SIZE
+            figsize = self.config.figures.VERY_LARGE_SIZE
         fig = pyplot.figure(title, figsize=figsize)
         fig.suptitle(title)
         gs = gridspec.GridSpec(nS, 23)
@@ -428,7 +434,9 @@ class TimeseriesPlotter(BasePlotter):
 
     def _plot_timeseries(self, data, variables_labels, time, time_unit, title, labels,
                          mode="ts", subplots=None, special_idx=[], subtitles=[],
-                        offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+                        offset=0.5, figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         if figure_name is None:
             figure_name = title
         if len(title) == 0:
@@ -445,25 +453,33 @@ class TimeseriesPlotter(BasePlotter):
                             offset, time_unit, title, figure_name, figsize)
 
     def plot_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
-                        offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+                        offset=0.5, figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         return self._plot_timeseries(timeseries.data, timeseries.variables_labels,
                                      timeseries.time, timeseries.time_unit, timeseries.title, timeseries.space_labels,
                                      mode, subplots, special_idx, subtitles, offset, figure_name, figsize)
 
     def plot_tvb_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
-                            offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+                            offset=0.5, figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         variables_labels = timeseries.labels_dimensions.get(timeseries.labels_ordering[1], [])
         return self._plot_timeseries(timeseries.data, variables_labels, timeseries.time,
                                     timeseries.sample_period_unit, timeseries.title, timeseries.get_space_labels(),
                                     mode, subplots, special_idx, subtitles, offset, figure_name, figsize)
 
     def plot_timeseries_raster(self, timeseries, subplots=None, special_idx=[], subtitles=[],
-                               offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+                               offset=0.5, figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         return self.plot_timeseries(timeseries, "raster", subplots, special_idx, subtitles,
                                     offset, figure_name, figsize)
 
     def plot_tvb_timeseries_raster(self, timeseries, subplots=None, special_idx=[], subtitles=[],
-                                   offset=0.5, figure_name=None, figsize=FiguresConfig.LARGE_SIZE):
+                                   offset=0.5, figure_name=None, figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.LARGE_SIZE
         return self.plot_tvb_timeseries(timeseries, "raster", subplots, special_idx, subtitles,
                                         offset, figure_name, figsize)
     @staticmethod

@@ -2,10 +2,16 @@
 
 import os
 import numpy
-import matplotlib
-from matplotlib import pyplot
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 from tvb_config.config import Config, FiguresConfig
+
+import matplotlib
+matplotlib.use(FiguresConfig().MATPLOTLIB_BACKEND)
+
+from matplotlib import pyplot
+pyplot.rcParams["font.size"] = FiguresConfig.FONTSIZE
+
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tvb_utils.log_error_utils import initialize_logger, warning
 from tvb_utils.data_structures_utils import ensure_list, generate_region_labels
 
@@ -39,7 +45,7 @@ class BasePlotter(object):
     def _save_figure(self, fig, figure_name=None):
         if self.config.figures.SAVE_FLAG:
             figure_name = self._figure_filename(fig, figure_name)
-            figure_name = figure_name[:numpy.min([100, len(figure_name)])] + '.' + FiguresConfig.FIG_FORMAT
+            figure_name = figure_name[:numpy.min([100, len(figure_name)])] + '.' + self.config.figures.FIG_FORMAT
             figure_dir = self.config.out.FOLDER_FIGURES
             if not (os.path.isdir(figure_dir)):
                 os.mkdir(figure_dir)
@@ -221,7 +227,9 @@ class BasePlotter(object):
 
     def plot_in_columns(self, data_dict_list, labels, width_ratios=[], left_ax_focus_indices=[],
                         right_ax_focus_indices=[], description="", title="", figure_name=None,
-                        figsize=FiguresConfig.VERY_LARGE_SIZE, **kwargs):
+                        figsize=None, **kwargs):
+        if not isinstance(figsize, (tuple, list)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
         fig = pyplot.figure(title, frameon=False, figsize=figsize)
         fig.suptitle(description)
         n_subplots = len(data_dict_list)
@@ -268,7 +276,9 @@ class BasePlotter(object):
 
     #TODO: name is too generic
     def plots(self, data_dict, shape=None, transpose=False, skip=0, xlabels={}, xscales={}, yscales={}, title='Plots',
-              lgnd={}, figure_name=None, figsize=FiguresConfig.VERY_LARGE_SIZE):
+              lgnd={}, figure_name=None, figsize=None):
+        if not isinstance(figsize, (tuple, list)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
         if shape is None:
             shape = (1, len(data_dict))
         fig, axes = pyplot.subplots(shape[0], shape[1], figsize=figsize)
@@ -292,13 +302,15 @@ class BasePlotter(object):
         return fig, axes
 
     def pair_plots(self, data, keys, diagonal_plots={}, transpose=False, skip=0,
-                   title='Pair plots', legend_prefix="", subtitles=None, figure_name=None,
-                   figsize=FiguresConfig.VERY_LARGE_SIZE):
+                   title='Pair plots', legend_prefix="", subtitles=None, figure_name=None, figsize=None):
 
         def confirm_y_coordinate(data, ymax):
             data = list(data)
             data.append(ymax)
             return tuple(data)
+
+        if not isinstance(figsize, (tuple, list)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
 
         if subtitles is None:
             subtitles = keys
@@ -368,8 +380,7 @@ class BasePlotter(object):
         self._check_show()
         return fig, axes
 
-    def plot_bars(self, data, ax=None, fig=None, title="", group_names=[], legend_prefix="",
-                  figsize=FiguresConfig.VERY_LARGE_SIZE):
+    def plot_bars(self, data, ax=None, fig=None, title="", group_names=[], legend_prefix="", figsize=None):
 
         def barlabel(ax, rects, positions):
             """
@@ -385,8 +396,9 @@ class BasePlotter(object):
                     pos = 0.25 * pos
                 ax.text(rect.get_x() + rect.get_width() / 2., pos, '%0.2f' % y,
                         color="k", ha='center', va='bottom', rotation=90)
-
         if fig is None:
+            if not isinstance(figsize, (tuple, list)):
+                figsize = self.config.figures.VERY_LARGE_SIZE
             fig, ax = pyplot.subplots(1, 1, figsize=figsize)
             show_and_save = True
         else:

@@ -1,8 +1,5 @@
 # coding=utf-8
 
-from tvb_config.config import FiguresConfig
-import matplotlib
-matplotlib.use(FiguresConfig().MATPLOTLIB_BACKEND)
 from matplotlib import pyplot
 
 import numpy
@@ -30,7 +27,9 @@ class HeadPlotter(BasePlotter):
         self._check_show()
         return pyplot.gcf(), tuple(axes)
 
-    def _plot_connectivity_stats(self, connectivity, figsize=FiguresConfig.VERY_LARGE_SIZE, figure_name='HeadStats '):
+    def _plot_connectivity_stats(self, connectivity, figsize=None, figure_name='HeadStats '):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
         pyplot.figure("Head stats " + str(connectivity.number_of_regions), figsize=figsize)
         areas_flag = len(connectivity.areas) == len(connectivity.region_labels)
         axes=[]
@@ -50,7 +49,9 @@ class HeadPlotter(BasePlotter):
 
     def _plot_gain_matrix(self, sensors, projection, region_labels, figure=None, title="Projection",
                           show_x_labels=True, show_y_labels=True, x_ticks=numpy.array([]), y_ticks=numpy.array([]),
-                          figsize=FiguresConfig.VERY_LARGE_SIZE):
+                          figsize=None):
+        if not isinstance(figsize, (list, tuple)):
+            figsize = self.config.figures.VERY_LARGE_SIZE
         if not (isinstance(figure, pyplot.Figure)):
             figure = pyplot.figure(title, figsize=figsize)
         ax, cax1 = self._plot_matrix(projection, sensors.labels, region_labels, 111, title,
