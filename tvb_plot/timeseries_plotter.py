@@ -21,7 +21,7 @@ class TimeseriesPlotter(BasePlotter):
     marker = None
     markersize = 2
     markerfacecolor = None
-    tick_font_size = 12
+    tick_font_size = 10
     print_ts_indices = True
 
     def __init__(self, config=None):
@@ -39,6 +39,7 @@ class TimeseriesPlotter(BasePlotter):
         else:
             # self.logger.warning("Noninteractive matplotlib backend! No highlighting functionality in plots!")
             self.config.figures.MOUSE_HOOVER = False
+        self.tick_font_size = config.figures.FONTSIZE
 
     @property
     def line_format(self):

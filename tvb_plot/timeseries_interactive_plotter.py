@@ -3,15 +3,53 @@ import numpy
 
 from tvb_utils.log_error_utils import initialize_logger
 from tvb_utils.data_structures_utils import ensure_list, rotate_n_list_elements
-from tvb.simulator.plot.timeseries_interactive import TimeSeriesInteractive, pylab, time_series_datatypes
+from tvb.simulator.plot.timeseries_interactive import \
+    TimeSeriesInteractive, pylab, time_series_datatypes, BACKGROUNDCOLOUR, EDGECOLOUR
 
 from matplotlib.pyplot import rcParams
 
 
-logger = initialize_logger(__name__)
+LOG = initialize_logger(__name__)
 
 
 class TimeseriesInteractivePlotter(TimeSeriesInteractive):
+
+    def create_figure(self, **kwargs):
+        """ Create the figure and time-series axes. """
+        # time_series_type = self.time_series.__class__.__name__
+        figsize = kwargs.pop("figsize", (14, 8))
+        facecolor = kwargs.pop("facecolor", BACKGROUNDCOLOUR)
+        edgecolor = kwargs.pop("edgecolor", EDGECOLOUR)
+        try:
+            figure_window_title = "Interactive time series: "  # + time_series_type
+            num = kwargs.pop("figname", kwargs.get("num", figure_window_title))
+            #            pylab.close(figure_window_title)
+            self.its_fig = pylab.figure(num=num,
+                                        figsize=figsize,
+                                        facecolor=facecolor,
+                                        edgecolor=edgecolor)
+        except ValueError:
+            LOG.info("My life would be easier if you'd update your PyLab...")
+            figure_number = 42
+            pylab.close(figure_number)
+            self.its_fig = pylab.figure(num=figure_number,
+                                        figsize=figsize,
+                                        facecolor=facecolor,
+                                        edgecolor=edgecolor)
+
+        self.ts_ax = self.its_fig.add_axes([0.1, 0.1, 0.85, 0.85])
+
+        self.whereami_ax = self.its_fig.add_axes([0.1, 0.95, 0.85, 0.025],
+                                                 facecolor=facecolor)
+        self.whereami_ax.set_axis_off()
+        if hasattr(self.whereami_ax, 'autoscale'):
+            self.whereami_ax.autoscale(enable=True, axis='both', tight=True)
+        self.whereami_ax.plot(self.time_view,
+                              numpy.zeros((len(self.time_view),)),
+                              color="0.3", linestyle="--")
+        self.hereiam = self.whereami_ax.plot(self.time_view,
+                                             numpy.zeros((len(self.time_view),)),
+                                             'b-', linewidth=4)
 
     def plot_time_series(self, **kwargs):
         """ Plot a view on the timeseries. """
@@ -84,8 +122,8 @@ class TimeseriesInteractivePlotter(TimeSeriesInteractive):
         time_series_type = self.time_series.__class__.__name__
         msg = "Generating an interactive time-series plot for %s"
         if isinstance(self.time_series, time_series_datatypes.TimeSeriesSurface):
-            logger.warning("Intended for region and sensors, not surfaces.")
-        logger.info(msg % time_series_type)
+            LOG.warning("Intended for region and sensors, not surfaces.")
+        LOG.info(msg % time_series_type)
 
         # Make the figure:
         self.create_figure()
