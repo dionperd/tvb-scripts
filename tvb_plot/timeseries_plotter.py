@@ -452,35 +452,39 @@ class TimeseriesPlotter(BasePlotter):
                             offset, time_unit, title, figure_name, figsize)
 
     def plot_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
-                        offset=0.5, figure_name=None, figsize=None):
+                        offset=0.5, title=None, figure_name=None, figsize=None):
         if not isinstance(figsize, (list, tuple)):
             figsize = self.config.figures.LARGE_SIZE
+        if title is None:
+            title = timeseries.title
         return self._plot_timeseries(timeseries.data, timeseries.variables_labels,
-                                     timeseries.time, timeseries.time_unit, timeseries.title, timeseries.space_labels,
+                                     timeseries.time, timeseries.time_unit, title, timeseries.space_labels,
                                      mode, subplots, special_idx, subtitles, offset, figure_name, figsize)
 
     def plot_tvb_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
-                            offset=0.5, figure_name=None, figsize=None):
+                            offset=0.5,  title=None, figure_name=None, figsize=None):
         if not isinstance(figsize, (list, tuple)):
             figsize = self.config.figures.LARGE_SIZE
+        if title is None:
+            title = timeseries.title
         variables_labels = timeseries.labels_dimensions.get(timeseries.labels_ordering[1], [])
         return self._plot_timeseries(timeseries.data, variables_labels, timeseries.time,
-                                    timeseries.sample_period_unit, timeseries.title, timeseries.get_space_labels(),
+                                    timeseries.sample_period_unit, title, timeseries.get_space_labels(),
                                     mode, subplots, special_idx, subtitles, offset, figure_name, figsize)
 
     def plot_timeseries_raster(self, timeseries, subplots=None, special_idx=[], subtitles=[],
-                               offset=0.5, figure_name=None, figsize=None):
+                               offset=0.5, title=None, figure_name=None, figsize=None):
         if not isinstance(figsize, (list, tuple)):
             figsize = self.config.figures.LARGE_SIZE
         return self.plot_timeseries(timeseries, "raster", subplots, special_idx, subtitles,
-                                    offset, figure_name, figsize)
+                                    offset, title, figure_name, figsize)
 
     def plot_tvb_timeseries_raster(self, timeseries, subplots=None, special_idx=[], subtitles=[],
-                                   offset=0.5, figure_name=None, figsize=None):
+                                   offset=0.5, title=None, figure_name=None, figsize=None):
         if not isinstance(figsize, (list, tuple)):
             figsize = self.config.figures.LARGE_SIZE
         return self.plot_tvb_timeseries(timeseries, "raster", subplots, special_idx, subtitles,
-                                        offset, figure_name, figsize)
+                                        offset, title, figure_name, figsize)
     @staticmethod
     def plot_tvb_timeseries_interactive(timeseries, first_n=-1, **kwargs):
         from tvb_plot.timeseries_interactive_plotter import TimeseriesInteractivePlotter
