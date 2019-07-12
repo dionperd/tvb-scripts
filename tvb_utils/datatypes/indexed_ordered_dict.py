@@ -18,8 +18,8 @@ class IndexedOrderedDict(object):
     def __init__(self, input_dict=OrderedDict({})):
         if not isinstance(input_dict, OrderedDict):
             if isinstance(input_dict, dict):
-                LOG.warning("input_dict is not an Ordered dict!\n"
-                            "Ordering it by sorting its keys!")
+                # LOG.warning("input_dict is not an Ordered dict!\n"
+                #             "Ordering it by sorting its keys!")
                 input_dict = sort_dict(input_dict)
             else:
                 raise ValueError("input node_ordered_dict is not a dict!:\n%s" % str(input_dict))
