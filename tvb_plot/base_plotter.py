@@ -96,7 +96,6 @@ class BasePlotter(object):
     def plot_vector_violin(self, dataset, vector=[], lines=[], labels=[], subplot=111, title="", violin_flag=True,
                            colormap="YlOrRd", show_y_labels=True, indices_red=None, sharey=None):
         ax = pyplot.subplot(subplot, sharey=sharey)
-        # ax.hold(True)
         pyplot.title(title)
         n_violins = dataset.shape[1]
         y_ticks = numpy.array(range(n_violins), dtype=numpy.int32)

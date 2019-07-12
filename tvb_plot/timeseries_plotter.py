@@ -288,7 +288,6 @@ class TimeseriesPlotter(BasePlotter):
         colors[:, 3] = alphas
         lines = []
         pyplot.figure(title, figsize=figsize)
-        pyplot.hold(True)
         axes = []
         for icol in range(n_cols):
             if n_rows == 1:
