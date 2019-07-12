@@ -110,6 +110,8 @@ class FiguresConfig(object):
     MOUSE_HOOVER = False
     MATPLOTLIB_BACKEND = "Qt4Agg"  # "Agg" # ,
     FONTSIZE=10
+    SMALL_FONTSIZE=8
+    LARGE_FONTSIZE = 8
 
 
 class CalculusConfig(object):
