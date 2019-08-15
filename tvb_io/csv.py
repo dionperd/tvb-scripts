@@ -83,6 +83,7 @@ def parse_csv(fname, merge=True):
         warning("Failed to read %s!" % fname)
         return {}
 
+
 def parse_csv_in_cols(fname):
     names = []
     sdims = {}

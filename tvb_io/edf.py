@@ -8,6 +8,7 @@ from tvb_utils.log_error_utils import initialize_logger
 from tvb_utils.data_structures_utils import ensure_string
 from tvb_timeseries.model.timeseries import Timeseries, TimeseriesDimensions
 
+
 def read_edf(path, sensors, rois_selection=None, label_strip_fun=None, time_units="ms", exclude_channels=[]):
     logger = initialize_logger(__name__)
 
