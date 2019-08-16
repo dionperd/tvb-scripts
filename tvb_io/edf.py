@@ -47,9 +47,9 @@ def read_edf(path, sensors, rois_selection=None, label_strip_fun=None, time_unit
     return data, times, rois, rois_inds, rois_lbls
 
 
-def read_edf_to_Timeseries(path, sensors, rois_selection=None, label_strip_fun=None, time_units="ms"):
+def read_edf_to_Timeseries(path, sensors, rois_selection=None, label_strip_fun=None, time_units="ms", **kwargs):
     data, times, rois, rois_inds, rois_lbls = \
         read_edf(path, sensors, rois_selection, label_strip_fun, time_units)
 
-    return Timeseries(data, {TimeseriesDimensions.SPACE.value: rois_lbls},
-                      times[0], np.mean(np.diff(times)), time_units)
+    return Timeseries(data, time=times, labels_dimensions={TimeseriesDimensions.SPACE.value: rois_lbls},
+                      sample_period=np.mean(np.diff(times)), **kwargs)
