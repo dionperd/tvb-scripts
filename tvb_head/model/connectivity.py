@@ -50,7 +50,7 @@ class Connectivity(object):
 
     @property
     def number_of_regions(self):
-        return self._tvb.centres.shape[0]
+        return self._tvb.weights.shape[0]
 
     def configure(self):
         self._tvb.configure()
