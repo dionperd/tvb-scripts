@@ -27,7 +27,7 @@ class Connectivity(object):
         self.normalized_weights = kwargs.pop("normalized_weights", np.array([]))
         for attr, value in kwargs.items():
             try:
-                if value.any():
+                if len(value):
                     setattr(self._tvb, attr, value)
             except:
                 warning("Failed to set attribute %s to TVB connectivity!" % attr)
