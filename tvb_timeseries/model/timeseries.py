@@ -329,6 +329,10 @@ class Timeseries(object):
         return self._tvb.nr_dimensions
 
     @property
+    def source(self):
+        return self.get_source()
+
+    @property
     def sensors(self):
         return self._tvb.sensors
 
