@@ -49,12 +49,30 @@ class H5Reader(object):
             h5_file = h5py.File(path, 'r', libver='latest')
 
             weights = h5_file['/' + ConnectivityH5Field.WEIGHTS][()]
-            tract_lengths = h5_file['/' + ConnectivityH5Field.TRACTS][()]
-            region_centres = h5_file['/' + ConnectivityH5Field.CENTERS][()]
-            region_labels = h5_file['/' + ConnectivityH5Field.REGION_LABELS][()]
-            orientations = h5_file['/' + ConnectivityH5Field.ORIENTATIONS][()]
-            hemispheres = h5_file['/' + ConnectivityH5Field.HEMISPHERES][()]
-            areas = h5_file['/' + ConnectivityH5Field.AREAS][()]
+            try:
+                tract_lengths = h5_file['/' + ConnectivityH5Field.TRACTS][()]
+            except:
+                tract_lengths = numpy.array([])
+            try:
+                region_centres = h5_file['/' + ConnectivityH5Field.CENTERS][()]
+            except:
+                region_centres = numpy.array([])
+            try:
+                region_labels = h5_file['/' + ConnectivityH5Field.REGION_LABELS][()]
+            except:
+                region_labels = numpy.array([])
+            try:
+                orientations = h5_file['/' + ConnectivityH5Field.ORIENTATIONS][()]
+            except:
+                orientations = numpy.array([])
+            try:
+                hemispheres = h5_file['/' + ConnectivityH5Field.HEMISPHERES][()]
+            except:
+                hemispheres = numpy.array([])
+            try:
+                areas = h5_file['/' + ConnectivityH5Field.AREAS][()]
+            except:
+                areas = numpy.array([])
 
             h5_file.close()
 
@@ -82,8 +100,14 @@ class H5Reader(object):
 
         vertices = h5_file['/' + SurfaceH5Field.VERTICES][()]
         triangles = h5_file['/' + SurfaceH5Field.TRIANGLES][()]
-        vertex_normals = h5_file['/' + SurfaceH5Field.VERTEX_NORMALS][()]
-        triangle_normals = h5_file['/' + SurfaceH5Field.TRIANGLE_NORMALS][()]
+        try:
+            vertex_normals = h5_file['/' + SurfaceH5Field.VERTEX_NORMALS][()]
+        except:
+            vertex_normals = numpy.array([])
+        try:
+            triangle_normals = h5_file['/' + SurfaceH5Field.TRIANGLE_NORMALS][()]
+        except:
+            triangle_normals = numpy.array([])
         h5_file.close()
 
         surface = surface_class(file_path=path, vertices=vertices, triangles=triangles,
@@ -133,15 +157,21 @@ class H5Reader(object):
         self.logger.info("Starting to read sensors of from: %s" % sensors_file)
         h5_file = h5py.File(sensors_file, 'r', libver='latest')
 
-        labels = h5_file['/' + SensorsH5Field.LABELS][()]
         locations = h5_file['/' + SensorsH5Field.LOCATIONS][()]
-        orientations = h5_file['/' + SensorsH5Field.ORIENTATIONS][()]
+        try:
+            labels = h5_file['/' + SensorsH5Field.LABELS][()]
+        except:
+            labels = numpy.array([])
+        try:
+            orientations = h5_file['/' + SensorsH5Field.ORIENTATIONS][()]
+        except:
+            orientations = numpy.array([])
         name = h5_file.attrs.get("name", name)
-        s_type = h5_file.attrs["Sensors_subtype"]
+        s_type = h5_file.attrs.get("Sensors_subtype", "")
 
         if '/' + SensorsH5Field.PROJECTION_MATRIX in h5_file:
             proj_matrix = h5_file['/' + SensorsH5Field.PROJECTION_MATRIX][()]
-            projection = SensorTypesToProjectionDict.get(s_type, ProjectionMatrix)()
+            projection = SensorTypesToProjectionDict.get(s_type, ProjectionMatrix())()
             projection.projection_data = proj_matrix
         else:
             projection = None
