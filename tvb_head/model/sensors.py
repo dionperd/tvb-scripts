@@ -231,7 +231,7 @@ class SensorsSEEG(SensorsInternal):
     _ui_name = sensors_type + " Sensors"
 
     def __init__(self, tvb_sensors=TVBSensorsInternal(), remove_leading_zeros_from_labels=True, **kwargs):
-        super(SensorsInternal, self).__init__(tvb_sensors, remove_leading_zeros_from_labels **kwargs)
+        super(SensorsInternal, self).__init__(tvb_sensors, remove_leading_zeros_from_labels, **kwargs)
         self.sensors_type = SensorTypes.TYPE_SEEG.value
         self._ui_name = self.sensors_type + " Sensors"
 
