@@ -50,7 +50,7 @@ class Sensors(object):
         self._tvb = tvb_sensors
         for attr, value in kwargs.items():
             try:
-                if value.any():
+                if len(value):
                     setattr(self._tvb, attr, value)
             except:
                 warning("Failed to set attribute %s to TVB sensors!" % attr)
@@ -158,7 +158,7 @@ class SensorsInternal(Sensors):
     def __init__(self, tvb_sensors=TVBSensorsInternal(), remove_leading_zeros_from_labels=True, **kwargs):
         self.elec_labels = kwargs.pop("elec_labels", np.array([]))
         self.elec_inds = kwargs.pop("elec_inds", np.array([]))
-        super(SensorsInternal, self).__init__(tvb_sensors, remove_leading_zeros_from_labels)
+        super(SensorsInternal, self).__init__(tvb_sensors, remove_leading_zeros_from_labels, **kwargs)
 
     def from_tvb_file(self, filepath, remove_leading_zeros_from_labels=True):
         self._tvb = TVBSensorsInternal.from_file(filepath, self._tvb)
@@ -231,7 +231,7 @@ class SensorsSEEG(SensorsInternal):
     _ui_name = sensors_type + " Sensors"
 
     def __init__(self, tvb_sensors=TVBSensorsInternal(), remove_leading_zeros_from_labels=True, **kwargs):
-        super(SensorsInternal, self).__init__(tvb_sensors, remove_leading_zeros_from_labels)
+        super(SensorsInternal, self).__init__(tvb_sensors, remove_leading_zeros_from_labels **kwargs)
         self.sensors_type = SensorTypes.TYPE_SEEG.value
         self._ui_name = self.sensors_type + " Sensors"
 
