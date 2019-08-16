@@ -236,11 +236,11 @@ class TimeseriesService(object):
                 rois[ir] = all_labels[roi]
         return timeseries.get_subspace_by_labels(rois), rois
 
-    def compute_seeg(self, source_timeseries, sensors, sum_mode="lin", **kwargs):
+    def compute_seeg(self, source_timeseries, sensors, projection=None, sum_mode="lin", **kwargs):
         if np.all(sum_mode == "exp"):
-            seeg_fun = lambda source, gain_matrix: compute_seeg_exp(source.squeezed, gain_matrix)
+            seeg_fun = lambda source, projection: compute_seeg_exp(source.squeezed, projection)
         else:
-            seeg_fun = lambda source, gain_matrix: compute_seeg_lin(source.squeezed, gain_matrix)
+            seeg_fun = lambda source, projection: compute_seeg_lin(source.squeezed, projection)
         labels_ordering = LABELS_ORDERING
         labels_ordering[1] = "SEEG"
         labels_ordering[2] = "SEEG Sensor"
@@ -250,24 +250,24 @@ class TimeseriesService(object):
                        "sample_period_unit": source_timeseries.sample_period_unit})
         if isinstance(sensors, dict):
             seeg = OrderedDict()
-            for sensor_name, sensor in sensors.items():
+            for sensor, projection in sensors.items():
                 kwargs.update({"labels_dimensions": {labels_ordering[2]: sensor.labels,
                                                      labels_ordering[1]: [sensor.name]}})
-                seeg[sensor_name] = \
-                    source_timeseries.__class__(seeg_fun(source_timeseries, sensor.gain_matrix), **kwargs)
+                seeg[sensor.name] = \
+                    source_timeseries.__class__(seeg_fun(source_timeseries, projection), **kwargs)
             return seeg
         else:
             kwargs.update({"labels_dimensions": {labels_ordering[2]: sensors.labels,
                                                  labels_ordering[1]: [sensors.name]}})
-            return source_timeseries.__class__(seeg_fun(source_timeseries, sensors.gain_matrix), **kwargs)
+            return source_timeseries.__class__(seeg_fun(source_timeseries, projection), **kwargs)
 
 
-def compute_seeg_lin(source_timeseries, gain_matrix):
-    return source_timeseries.dot(gain_matrix.T)
+def compute_seeg_lin(source_timeseries, projection):
+    return source_timeseries.dot(projection.T)
 
 
-def compute_seeg_exp(source_timeseries, gain_matrix):
-    return np.log(np.exp(source_timeseries).dot(gain_matrix.T))
+def compute_seeg_exp(source_timeseries, projection):
+    return np.log(np.exp(source_timeseries).dot(projection.T))
 
 
 
