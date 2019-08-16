@@ -87,7 +87,6 @@ def select_greater_values_2Darray_inds(values, threshold=None, percentile=None, 
                 select_greater_values_array_inds(values.flatten(), threshold, percentile, nvals, verbose), values.shape)
 
 
-
 def select_by_hierarchical_group_metric_clustering(distance, disconnectivity=np.array([]), metric=None,
                                                    n_groups=10, members_per_group=1):
     if disconnectivity.shape == distance.shape:
