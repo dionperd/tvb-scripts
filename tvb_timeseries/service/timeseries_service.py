@@ -212,12 +212,12 @@ class TimeseriesService(object):
         return self.select_by_hierarchical_group_metric_clustering(timeseries, 1-correlation,
                                                                    disconnectivity, power, n_groups, members_per_group)
 
-    def select_by_gain_matrix_power(self, timeseries, gain_matrix=np.array([]),
+    def select_by_projection_power(self, timeseries, projection=np.array([]),
                                     disconnectivity=np.array([]), power=np.array([]),
                                     n_groups=10, members_per_group=1):
         if len(power) != timeseries.number_of_labels:
             power = self.power(timeseries)
-        return self.select_by_hierarchical_group_metric_clustering(timeseries, 1-np.corrcoef(gain_matrix),
+        return self.select_by_hierarchical_group_metric_clustering(timeseries, 1-np.corrcoef(projection),
                                                                    disconnectivity, power, n_groups, members_per_group)
 
     def select_by_rois_proximity(self, timeseries, proximity, proximity_th=None, percentile=None, n_signals=None):
@@ -238,9 +238,9 @@ class TimeseriesService(object):
 
     def compute_seeg(self, source_timeseries, sensors, projection=None, sum_mode="lin", **kwargs):
         if np.all(sum_mode == "exp"):
-            seeg_fun = lambda source, projection: compute_seeg_exp(source.squeezed, projection)
+            seeg_fun = lambda source, projection_data: compute_seeg_exp(source.squeezed, projection_data)
         else:
-            seeg_fun = lambda source, projection: compute_seeg_lin(source.squeezed, projection)
+            seeg_fun = lambda source, projection_data: compute_seeg_lin(source.squeezed, projection_data)
         labels_ordering = LABELS_ORDERING
         labels_ordering[1] = "SEEG"
         labels_ordering[2] = "SEEG Sensor"
@@ -254,20 +254,20 @@ class TimeseriesService(object):
                 kwargs.update({"labels_dimensions": {labels_ordering[2]: sensor.labels,
                                                      labels_ordering[1]: [sensor.name]}})
                 seeg[sensor.name] = \
-                    source_timeseries.__class__(seeg_fun(source_timeseries, projection), **kwargs)
+                    source_timeseries.__class__(seeg_fun(source_timeseries, projection.projection_data), **kwargs)
             return seeg
         else:
             kwargs.update({"labels_dimensions": {labels_ordering[2]: sensors.labels,
                                                  labels_ordering[1]: [sensors.name]}})
-            return source_timeseries.__class__(seeg_fun(source_timeseries, projection), **kwargs)
+            return source_timeseries.__class__(seeg_fun(source_timeseries, projection.projection_data), **kwargs)
 
 
-def compute_seeg_lin(source_timeseries, projection):
-    return source_timeseries.dot(projection.T)
+def compute_seeg_lin(source_timeseries, projection_data):
+    return source_timeseries.dot(projection_data.T)
 
 
-def compute_seeg_exp(source_timeseries, projection):
-    return np.log(np.exp(source_timeseries).dot(projection.T))
+def compute_seeg_exp(source_timeseries, projection_data):
+    return np.log(np.exp(source_timeseries).dot(projection_data.T))
 
 
 
