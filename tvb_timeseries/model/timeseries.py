@@ -11,9 +11,14 @@ TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 from tvb_utils.log_error_utils import initialize_logger, raise_value_error, warning
 from tvb_utils.data_structures_utils import isequal_string, monopolar_to_bipolar
+from tvb_head.model.sensors import Sensors, SensorsEEG, SensorsMEG, SensorsSEEG, SensorsInternal
+from tvb_head.model.surface import Surface
 
 from tvb.datatypes.time_series import \
     TimeSeries, TimeSeriesRegion, TimeSeriesEEG, TimeSeriesMEG, TimeSeriesSEEG, TimeSeriesSurface, TimeSeriesVolume
+from tvb.datatypes.sensors import Sensors as TVBSensors, SensorsEEG as TVBSensorsEEG, SensorsMEG as TVBSensorsMEG, \
+    SensorsInternal as TVBSensorsInternal
+from tvb.datatypes.surfaces import Surface as TVBSurface
 
 
 class TimeseriesDimensions(Enum):
@@ -54,63 +59,119 @@ class Timeseries(object):
 
     ts_type = ""
 
+    _tvb = None
+
     # labels_dimensions = {"space": numpy.array([]), "variables": numpy.array([])}
 
-    def __init__(self, data, **kwargs):
-        data = prepare_4D(data, self.logger)
-        time = kwargs.pop("time", None)
-        if time is not None:
-            start_time = float(kwargs.pop("start_time",
-                                          kwargs.pop("start_time", time[0])))
-            sample_period = float(kwargs.pop("sample_period",
-                                             kwargs.pop("sample_period", numpy.mean(numpy.diff(time)))))
-            kwargs.update({"start_time": start_time, "sample_period": sample_period})
+    def __init__(self, input=numpy.array([]), **kwargs):
+        if isinstance(input, (Timeseries, TimeSeries)):
 
-        self.ts_type = kwargs.pop("ts_type", "Region")
-        sensors = kwargs.get("sensors", None)
-        labels_ordering = kwargs.get("labels_ordering", None)
-        if sensors is not None:
-            if labels_ordering is None:
-                labels_ordering = LABELS_ORDERING
-                labels_ordering[1] = "%s sensor" % sensors.sensors_type
-                kwargs.update({"labels_ordering": labels_ordering})
-            if isequal_string(sensors.sensors_type, "SEEG") or \
-                isequal_string(sensors.sensors_type, "Internal"):
-                self._tvb = TimeSeriesSEEG(data, **kwargs)
-                self.ts_type = "SEEG"
-            elif isequal_string(sensors.sensors_type, "EEG"):
-                self._tvb = TimeSeriesEEG(data, **kwargs)
-                self.ts_type = "EEG"
-            elif isequal_string(sensors.sensors_type, "MEG"):
-                self._tvb = TimeSeriesMEG(data, **kwargs)
-                self.ts_type = "MEG"
-            else:
-                raise_value_error("Not recognizing sensors of type %s:\n%s"
-                                  % (sensors.sensors_type, str(sensors)))
-        else:
-            if isequal_string(self.ts_type, "Region"):
+            if isinstance(input, Timeseries):
+                self._tvb = deepcopy(input._tvb)
+                self.ts_type = str(input.ts_type)
+
+            elif isinstance(input, TimeSeries):
+                self._tvb = deepcopy(input)
+                if isinstance(input, TimeSeriesRegion):
+                    self.ts_type = "Region"
+                if isinstance(input, TimeSeriesSEEG):
+                    self.ts_type = "SEEG"
+                elif isinstance(input, TimeSeriesEEG):
+                    self.ts_type = "EEG"
+                elif isinstance(input, TimeSeriesMEG):
+                    self.ts_type = "MEG"
+                elif isinstance(input, TimeSeriesEEG):
+                    self.ts_type = "EEG"
+                elif isinstance(input, TimeSeriesVolume):
+                    self.ts_type = "Volume"
+                elif isinstance(input, TimeSeriesSurface):
+                    self.ts_type = "Surface"
+                else:
+                    self.ts_type = ""
+                    warning("Input TimeSeries %s is not one of the known TVB TimeSeries classes!" % str(input))
+            for attr, value in kwargs.items():
+                try:
+                    setattr(self, attr, value)
+                except:
+                    setattr(self._tvb, attr, value)
+
+        elif isinstance(input, numpy.ndarray):
+            input = prepare_4D(input, self.logger)
+            time = kwargs.pop("time", None)
+            if time is not None:
+                start_time = float(kwargs.pop("start_time",
+                                              kwargs.pop("start_time", time[0])))
+                sample_period = float(kwargs.pop("sample_period",
+                                                 kwargs.pop("sample_period", numpy.mean(numpy.diff(time)))))
+                kwargs.update({"start_time": start_time, "sample_period": sample_period})
+
+            # Initialize
+            self.ts_type = kwargs.pop("ts_type", "Region")
+            labels_ordering = kwargs.get("labels_ordering", None)
+
+            # Get input sensors if any
+            input_sensors = None
+            if isinstance(kwargs.get("sensors", None), (TVBSensors, Sensors)):
+                if isinstance(kwargs["sensors"], Sensors):
+                    input_sensors = kwargs["sensors"]._tvb
+                    self.ts_type = "%s sensor" % input_sensors.sensors_type
+                    kwargs.update({"sensors": input_sensors})
+                else:
+                    input_sensors = kwargs["sensors"]
+
+            # Create Timeseries
+            if isinstance(input_sensors, TVBSensors) or \
+                    self.ts_type in ["SEEG sensor", "Internal sensor", "EEG sensor", "MEG sensor"]:
+                # ...for Sensor Timeseries
                 if labels_ordering is None:
                     labels_ordering = LABELS_ORDERING
-                    labels_ordering[2] = "Region"
+                    labels_ordering[2] = "%s sensor" % self.ts_type
                     kwargs.update({"labels_ordering": labels_ordering})
-                self._tvb = TimeSeriesRegion(data=data, **kwargs)  # , **kwargs
-            elif isequal_string(self.ts_type, "Surface"):
-                if labels_ordering is None:
-                    labels_ordering = LABELS_ORDERING
-                    labels_ordering[2] = "Vertex"
-                    kwargs.update({"labels_ordering": labels_ordering})
-                self._tvb = TimeSeriesSurface(data, **kwargs)
-            elif isequal_string(self.ts_type, "Volume"):
-                if labels_ordering is None:
-                    labels_ordering = ["Time", "X", "Y", "Z"]
-                    kwargs.update({"labels_ordering": labels_ordering})
-                self._tvb = TimeSeriesVolume(data, **kwargs)
+                if isinstance(input_sensors, TVBSensorsInternal) or isequal_string(self.ts_type, "Internal sensor")\
+                        or isequal_string(self.ts_type, "SEEG sensor"):
+                    self._tvb = TimeSeriesSEEG(data=input, **kwargs)
+                    self.ts_type = "SEEG sensor"
+                elif isinstance(input_sensors, TVBSensorsEEG) or isequal_string(self.ts_type, "EEG sensor"):
+                    self._tvb = TimeSeriesEEG(data=input, **kwargs)
+                    self.ts_type = "EEG sensor"
+                elif isinstance(input_sensors, TVBSensorsMEG) or isequal_string(self.ts_type, "MEG sensor"):
+                    self._tvb = TimeSeriesMEG(data=input, **kwargs)
+                    self.ts_type = "MEG sensor"
+                else:
+                    raise_value_error("Not recognizing sensors of type %s:\n%s"
+                                      % (sensors.sensors_type, str(sensors)))
             else:
-                self._tvb = TimeSeries(data, **kwargs)
+                input_surface = kwargs.pop("surface", None)
+                if isinstance(input_surface, (Surface, TVBSurface)) or self.ts_type == "Surface":
+                    self.ts_type = "Surface"
+                    if isinstance(input_surface, Surface):
+                        kwargs.update({"surface": input_surface._tvb})
+                    else:
+                        kwargs.update({"surface": input_surface})
+                    if labels_ordering is None:
+                        labels_ordering = LABELS_ORDERING
+                        labels_ordering[2] = "Vertex"
+                        kwargs.update({"labels_ordering": labels_ordering})
+                    self._tvb = TimeSeriesSurface(data=input, **kwargs)
+                elif isequal_string(self.ts_type, "Region"):
+                    if labels_ordering is None:
+                        labels_ordering = LABELS_ORDERING
+                        labels_ordering[2] = "Region"
+                        kwargs.update({"labels_ordering": labels_ordering})
+                    self._tvb = TimeSeriesRegion(data=input, **kwargs)  # , **kwargs
+                elif isequal_string(self.ts_type, "Volume"):
+                    if labels_ordering is None:
+                        labels_ordering = ["Time", "X", "Y", "Z"]
+                        kwargs.update({"labels_ordering": labels_ordering})
+                    self._tvb = TimeSeriesVolume(data=input, **kwargs)
+                else:
+                    self._tvb = TimeSeries(data=input, **kwargs)
 
-        if not numpy.all([dim_label in self._tvb.labels_ordering for dim_label in self._tvb.labels_dimensions.keys()]):
-            warning("Lack of correspondance between timeseries labels_ordering %s\n"
-                    "and labels_dimensions!: %s" % (self._tvb.labels_ordering, self._tvb.labels_dimensions.keys()))
+            if not numpy.all([dim_label in self._tvb.labels_dimensions.keys()
+                              for dim_label in self._tvb.labels_ordering]):
+                warning("Lack of correspondance between timeseries labels_ordering %s\n"
+                        "and labels_dimensions!: %s" % (self._tvb.labels_ordering,
+                                                        self._tvb.labels_dimensions.keys()))
 
         self._tvb.configure()
         self.configure_time()
@@ -120,13 +181,7 @@ class Timeseries(object):
             self._tvb.title = "%s Time Series" % self.ts_type
 
     def duplicate(self, **kwargs):
-        duplicate = deepcopy(self)
-        for attr, value in kwargs.items():
-            try:
-                setattr(duplicate, attr, value)
-            except:
-                setattr(duplicate._tvb, attr, value)
-        return duplicate.configure()
+        return Timeseries(self, **kwargs)
 
     def _get_index_of_state_variable(self, sv_label):
         try:

@@ -252,14 +252,18 @@ class TimeseriesService(object):
             seeg = OrderedDict()
             for sensor, projection in sensors.items():
                 kwargs.update({"labels_dimensions": {labels_ordering[2]: sensor.labels,
-                                                     labels_ordering[1]: [sensor.name]}})
+                                                     labels_ordering[1]: [sensor.name]},
+                               "sensors": sensor})
                 seeg[sensor.name] = \
-                    source_timeseries.__class__(seeg_fun(source_timeseries, projection.projection_data), **kwargs)
+                    source_timeseries.__class__(
+                                np.expand_dims(seeg_fun(source_timeseries, projection.projection_data), 1), **kwargs)
             return seeg
         else:
             kwargs.update({"labels_dimensions": {labels_ordering[2]: sensors.labels,
-                                                 labels_ordering[1]: [sensors.name]}})
-            return source_timeseries.__class__(seeg_fun(source_timeseries, projection.projection_data), **kwargs)
+                                                 labels_ordering[1]: [sensors.name]},
+                           "sensors": sensors})
+            return source_timeseries.__class__(
+                                np.expand_dims(seeg_fun(source_timeseries, projection.projection_data), 1), **kwargs)
 
 
 def compute_seeg_lin(source_timeseries, projection_data):
