@@ -10,8 +10,8 @@ from tvb.basic.profile import TvbProfile
 TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 from tvb_utils.log_error_utils import initialize_logger, raise_value_error, warning
-from tvb_utils.data_structures_utils import isequal_string, monopolar_to_bipolar
-from tvb_head.model.sensors import Sensors, SensorsEEG, SensorsMEG, SensorsSEEG, SensorsInternal
+from tvb_utils.data_structures_utils import ensure_list, labels_to_inds, isequal_string, monopolar_to_bipolar
+from tvb_head.model.sensors import Sensors
 from tvb_head.model.surface import Surface
 
 from tvb.datatypes.time_series import \
@@ -53,6 +53,19 @@ def prepare_4D(data, logger=initialize_logger(__name__)):
     return data
 
 
+def labels_to_indices(labels, target_labels, variables_name, logger):
+    indices = []
+    target_labels = numpy.unique(ensure_list(target_labels))
+    if len(target_labels) > 0:
+        try:
+            indices = labels_to_inds(labels, target_labels)
+        except IndexError:
+            logger.error("Failed to access indices of %s: %s.\nExisting %s: %s" %
+                         (variables_name, target_labels, variables_name, labels))
+            raise
+    return indices
+
+
 class Timeseries(object):
 
     logger = initialize_logger(__name__)
@@ -63,7 +76,7 @@ class Timeseries(object):
 
     # labels_dimensions = {"space": numpy.array([]), "variables": numpy.array([])}
 
-    def __init__(self, input=numpy.array([]), **kwargs):
+    def __init__(self, input=numpy.array([[], []]), **kwargs):
         if isinstance(input, (Timeseries, TimeSeries)):
 
             if isinstance(input, Timeseries):
@@ -139,7 +152,7 @@ class Timeseries(object):
                     self.ts_type = "MEG sensor"
                 else:
                     raise_value_error("Not recognizing sensors of type %s:\n%s"
-                                      % (sensors.sensors_type, str(sensors)))
+                                      % (self.ts_type, str(input_sensors)))
             else:
                 input_surface = kwargs.pop("surface", None)
                 if isinstance(input_surface, (Surface, TVBSurface)) or self.ts_type == "Surface":
@@ -181,40 +194,23 @@ class Timeseries(object):
             self._tvb.title = "%s Time Series" % self.ts_type
 
     def duplicate(self, **kwargs):
-        return Timeseries(self, **kwargs)
+        return self.__class__(self, **kwargs)
 
-    def _get_index_of_state_variable(self, sv_label):
-        try:
-            sv_index = numpy.where(self.variables_labels == sv_label)[0][0]
-        except KeyError:
-            self.logger.error("There are no state variables defined for this instance. Its shape is: %s",
-                              self._tvb.data.shape)
-            raise
-        except IndexError:
-            self.logger.error("Cannot access index of state variable label: %s. Existing state variables: %s" % (
-                sv_label, self.variables_labels))
-            raise
-        return sv_index
+    def _get_indices_of_variables(self, sv_labels):
+        return labels_to_indices(self.variables_labels, sv_labels,
+                                 TimeseriesDimensions.VARIABLES.value, self.logger)
 
-    def get_state_variable(self, sv_label):
-        sv_data = self._tvb.data[:, self._get_index_of_state_variable(sv_label), :, :]
+    def get_variables(self, sv_labels):
+        sv_data = self._tvb.data[:, self._get_indices_of_variables(sv_labels), :, :]
         subspace_labels_dimensions = deepcopy(self._tvb.labels_dimensions)
-        subspace_labels_dimensions[self.labels_ordering[1]] = [sv_label]
+        subspace_labels_dimensions[self.labels_ordering[1]] = numpy.array(sv_labels)
         if sv_data.ndim == 3:
             sv_data = numpy.expand_dims(sv_data, 1)
         return self.duplicate(data=sv_data, labels_dimensions=subspace_labels_dimensions)
 
-    def _get_indices_for_labels(self, list_of_labels):
-        list_of_indices_for_labels = []
-        for label in list_of_labels:
-            try:
-                space_index = numpy.where(self.space_labels == label)[0][0]
-            except ValueError:
-                self.logger.error("Cannot access index of space label: %s. Existing space labels: %s" %
-                    (label, self.space_labels))
-                raise
-            list_of_indices_for_labels.append(space_index)
-        return list_of_indices_for_labels
+    def _get_indices_of_labels(self, list_of_labels):
+        return labels_to_indices(self.space_labels, list_of_labels,
+                                 TimeseriesDimensions.SPACE.value, self.logger)
 
     def get_subspace_by_index(self, list_of_index, **kwargs):
         self._check_space_indices(list_of_index)
@@ -226,13 +222,13 @@ class Timeseries(object):
         return self.duplicate(data=subspace_data, labels_dimensions=subspace_labels_dimensions, **kwargs)
 
     def get_subspace_by_labels(self, list_of_labels):
-        list_of_indices_for_labels = self._get_indices_for_labels(list_of_labels)
+        list_of_indices_for_labels = self._get_indices_of_labels(list_of_labels)
         return self.get_subspace_by_index(list_of_indices_for_labels)
 
     def __getattr__(self, attr_name):
         if self.labels_ordering[1] in self._tvb.labels_dimensions.keys():
             if attr_name in self.variables_labels:
-                return self.get_state_variable(attr_name)
+                return self.get_variables(attr_name)
         if (self.labels_ordering[2] in self._tvb.labels_dimensions.keys()):
             if attr_name in self.space_labels:
                 return self.get_subspace_by_labels([attr_name])
@@ -244,15 +240,16 @@ class Timeseries(object):
             if attr_name.find("__") < 0:
                 self.logger.error(
                     "Attribute %s is not defined for this instance! You can use the following labels: "
-                    "state_variables = %s and space = %s" %
-                    (attr_name, self.variables_labels, self.space_labels))
+                    "%s = %s and %s = %s" %
+                    (attr_name, TimeseriesDimensions.VARIABLES.value, self.variables_labels,
+                     TimeseriesDimensions.SPACE.value, self.space_labels))
             raise AttributeError
 
     def _get_index_for_slice_label(self, slice_label, slice_idx):
         if slice_idx == 1:
-            return self._get_indices_for_labels([slice_label])[0]
+            return self._get_indices_of_labels([slice_label])[0]
         if slice_idx == 2:
-            return self._get_index_of_state_variable(slice_label)
+            return self._get_indices_of_variables(slice_label)
 
     def _check_for_string_slice_indices(self, current_slice, slice_idx):
         slice_label1 = current_slice.start
@@ -339,7 +336,8 @@ class Timeseries(object):
 
     @property
     def sample_period_unit(self):
-        return self._tvb.sample_period_unit
+        return self._tvb.sample_period_untimeseries.duplicate(data=filter_data(timeseries.data, timeseries.sample_rate,
+                                                     lowcut, highcut, mode, order), **kwargs)
 
     @property
     def sample_rate(self):
@@ -413,9 +411,9 @@ class Timeseries(object):
 
     def _check_space_indices(self, list_of_index):
         for index in list_of_index:
-            if index < 0 or index > self._tvb.data.shape[1]:
+            if index < 0 or index > self._tvb.data.shape[2]:
                 self.logger.error("Some of the given indices are out of region range: [0, %s]",
-                                  self._tvb.data.shape[1])
+                                  self._tvb.data.shape[2])
                 raise IndexError
 
     def _get_time_unit_for_index(self, time_index):
@@ -464,7 +462,7 @@ class Timeseries(object):
             self.logger.error("No state variables are defined for this instance!")
             raise ValueError
         if PossibleVariables.SOURCE.value in self.variables_labels:
-            return self.get_state_variable(PossibleVariables.SOURCE.value)
+            return self.get_variables(PossibleVariables.SOURCE.value)
 
     def get_bipolar(self, **kwargs):
         bipolar_labels, bipolar_inds = monopolar_to_bipolar(self.space_labels)
@@ -472,6 +470,10 @@ class Timeseries(object):
         bipolar_labels_dimensions = deepcopy(self._tvb.labels_dimensions)
         bipolar_labels_dimensions[self.labels_ordering[2]] = list(bipolar_labels)
         return self.duplicate(data=data, labels_dimensions=bipolar_labels_dimensions, **kwargs)
+
+    def set_data(self, data):
+        self._tvb.data = data
+        return self
 
     def configure(self):
         self._tvb.configure()
