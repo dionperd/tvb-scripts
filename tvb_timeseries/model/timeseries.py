@@ -10,7 +10,8 @@ from tvb.basic.profile import TvbProfile
 TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 from tvb_utils.log_error_utils import initialize_logger, raise_value_error, warning
-from tvb_utils.data_structures_utils import ensure_list, labels_to_inds, isequal_string, monopolar_to_bipolar
+from tvb_utils.data_structures_utils import \
+    ensure_list, labels_to_inds, isequal_string, monopolar_to_bipolar, is_integer, is_numeric
 from tvb_head.model.sensors import Sensors
 from tvb_head.model.surface import Surface
 
@@ -196,42 +197,117 @@ class Timeseries(object):
     def duplicate(self, **kwargs):
         return self.__class__(self, **kwargs)
 
-    def _get_indices_of_variables(self, sv_labels):
-        return labels_to_indices(self.variables_labels, sv_labels,
-                                 TimeseriesDimensions.VARIABLES.value, self.logger)
+    def _get_indices_from_labels(self, labels, dim):
+        dim_label = self.labels_ordering[dim]
+        return labels_to_indices(self.labels_dimensions[dim_label], labels, dim_label, self.logger)
 
-    def get_variables(self, sv_labels):
-        sv_data = self._tvb.data[:, self._get_indices_of_variables(sv_labels), :, :]
-        subspace_labels_dimensions = deepcopy(self._tvb.labels_dimensions)
-        subspace_labels_dimensions[self.labels_ordering[1]] = numpy.array(sv_labels)
-        if sv_data.ndim == 3:
-            sv_data = numpy.expand_dims(sv_data, 1)
-        return self.duplicate(data=sv_data, labels_dimensions=subspace_labels_dimensions)
+    def _get_indices_of_variables(self, sv_labels):
+        return self._get_indices_from_labels(sv_labels, 0)
 
     def _get_indices_of_labels(self, list_of_labels):
-        return labels_to_indices(self.space_labels, list_of_labels,
-                                 TimeseriesDimensions.SPACE.value, self.logger)
+        return self._get_indices_from_labels(list_of_labels, 2)
 
-    def get_subspace_by_index(self, list_of_index, **kwargs):
-        self._check_space_indices(list_of_index)
-        subspace_data = self._tvb.data[:, :, list_of_index, :]
-        subspace_labels_dimensions = deepcopy(self._tvb.labels_dimensions)
-        subspace_labels_dimensions[self.labels_ordering[2]] = self.space_labels[list_of_index].tolist()
-        if subspace_data.ndim == 3:
-            subspace_data = numpy.expand_dims(subspace_data, 2)
-        return self.duplicate(data=subspace_data, labels_dimensions=subspace_labels_dimensions, **kwargs)
+    def _get_indices_of_samples(self, list_of_labels):
+        return self._get_indices_from_labels(list_of_labels, 3)
+
+    def _get_time_for_index(self, time_index):
+        return self._tvb.start_time + time_index * self._tvb.sample_period
+
+    def _get_index_for_time(self, time_unit):
+        return int((time_unit - self._tvb.start_time) / self._tvb.sample_period)
+
+    def _check_indices(self, list_of_index, dim):
+        for index in list_of_index:
+            if index < 0 or index > self._tvb.data.shape[dim]:
+                self.logger.error("Some of the given indices are out of region range: [0, %s]",
+                                  self._tvb.data.shape[dim])
+                raise IndexError
+
+    def get_subset_by_index(self, list_of_indices, dim, **kwargs):
+        assert dim in [0, 1, 2, 3]
+        list_of_indices = ensure_list(list_of_indices)
+        self._check_indices(list_of_indices, dim)
+        slice_tuple = [slice(None), slice(None), slice(None), slice(None)]
+        slice_tuple[dim] = list_of_indices
+        data = self._tvb.data[tuple(slice_tuple)]
+        dim_label = self.labels_ordering[dim]
+        if len(self.labels_dimensions[dim_label]):
+            labels_dimensions = deepcopy(self.labels_dimensions)
+            labels_dimensions[dim_label] = numpy.array(labels_dimensions[dim_label])[list_of_indices]
+        else:
+            labels_dimensions = self.labels_dimensions
+        if data.ndim == 3:
+            data = numpy.expand_dims(data, 1)
+        return self.duplicate(data=data, labels_dimensions=labels_dimensions, **kwargs)
+
+    def get_subset_by_label(self, list_of_labels, dim, **kwargs):
+        assert dim in [0, 1, 2, 3]
+        list_of_labels = ensure_list(list_of_labels)
+        dim_label = self.labels_ordering[dim]
+        list_of_indices = labels_to_indices(self.labels_dimensions[dim_label], list_of_labels, dim_label, self.logger)
+        return self.get_subset_by_index(list_of_indices, dim, **kwargs)
+
+    def get_subset(self, list_of_indices_or_labels, dim, **kwargs):
+        assert dim in [0, 1, 2, 3]
+        list_of_indices_or_labels = ensure_list(list_of_indices_or_labels)
+        if numpy.all([is_integer(ind_or_lbl) for ind_or_lbl in list_of_indices_or_labels]):
+            return self.get_subset_by_index(list_of_indices_or_labels, dim, **kwargs)
+        else:
+            if dim == 0:
+                if not numpy.all([is_numeric(ind_or_lbl) for ind_or_lbl in list_of_indices_or_labels]):
+                    raise_value_error("Input consists neither of integer indices nor of points in time (floats)!: %s" %
+                                      list_of_indices_or_labels)
+                time_indices = [self._get_index_for_time(time) for time in list_of_indices_or_labels]
+                return self.get_subset_by_index(time_indices, 0, **kwargs)
+            else:
+                if not numpy.all([isinstance(ind_or_lbl, string_types) for ind_or_lbl in list_of_indices_or_labels]):
+                    raise_value_error("Input consists neither of integer indices nor of label strings!: %s" %
+                                      list_of_indices_or_labels)
+                return self.get_subset_by_label(list_of_indices_or_labels, dim, **kwargs)
+
+    def get_times_by_index(self, list_of_times_indices, **kwargs):
+        return self.get_subset_by_index(list_of_times_indices, 0, **kwargs)
+
+    def get_times(self, list_of_times, **kwargs):
+        return self.get_subset(list_of_times, 0, **kwargs)
+
+    def get_variables_by_index(self, list_of_indices, **kwargs):
+        return self.get_subset_by_index(list_of_indices, 1, **kwargs)
+
+    def get_variables_by_label(self, list_of_labels, **kwargs):
+        return self.get_subset_by_label(list_of_labels, 1, **kwargs)
+
+    def get_variables(self, list_of_labels_or_inds, **kwargs):
+        return self.get_subset(list_of_labels_or_inds, 1, **kwargs)
+
+    def get_subspace_by_index(self, list_of_indices, **kwargs):
+        return self.get_subset_by_index(list_of_indices, 2, **kwargs)
 
     def get_subspace_by_labels(self, list_of_labels):
-        list_of_indices_for_labels = self._get_indices_of_labels(list_of_labels)
-        return self.get_subspace_by_index(list_of_indices_for_labels)
+        return self.get_subset_by_label(list_of_labels, 2, **kwargs)
+
+    def get_subspace(self, list_of_labels_or_inds, **kwargs):
+        return self.get_subset(list_of_labels_or_inds, 2, **kwargs)
+
+    def get_samples_by_index(self, list_of_indices, **kwargs):
+        return self.get_subset_by_index(list_of_indices, 2, **kwargs)
+
+    def get_samples_by_labels(self, list_of_labels):
+        return self.get_subset_by_label(list_of_labels, 2, **kwargs)
+
+    def get_samples(self, list_of_labels_or_inds, **kwargs):
+        return self.get_subset(list_of_labels_or_inds, 2, **kwargs)
 
     def __getattr__(self, attr_name):
         if self.labels_ordering[1] in self._tvb.labels_dimensions.keys():
             if attr_name in self.variables_labels:
-                return self.get_variables(attr_name)
+                return self.get_variables_by_label(attr_name)
         if (self.labels_ordering[2] in self._tvb.labels_dimensions.keys()):
             if attr_name in self.space_labels:
-                return self.get_subspace_by_labels([attr_name])
+                return self.get_subspace_by_labels(attr_name)
+        if (self.labels_ordering[3] in self._tvb.labels_dimensions.keys()):
+            if attr_name in self.samples_labels:
+                return self.get_samples_by_labels(attr_name)
         try:
             return getattr(self._tvb, attr_name)
         except:
@@ -336,8 +412,7 @@ class Timeseries(object):
 
     @property
     def sample_period_unit(self):
-        return self._tvb.sample_period_untimeseries.duplicate(data=filter_data(timeseries.data, timeseries.sample_rate,
-                                                     lowcut, highcut, mode, order), **kwargs)
+        return self._tvb.sample_period_unit
 
     @property
     def sample_rate(self):
@@ -372,6 +447,10 @@ class Timeseries(object):
     @property
     def variables_labels(self):
         return numpy.array(self._tvb.labels_dimensions.get(self.labels_ordering[1], []))
+
+    @property
+    def samples_labels(self):
+        return numpy.array(self._tvb.labels_dimensions.get(self.labels_ordering[3], []))
 
     @property
     def nr_dimensions(self):
@@ -409,19 +488,6 @@ class Timeseries(object):
     def squeezed(self):
         return numpy.squeeze(self._tvb.data)
 
-    def _check_space_indices(self, list_of_index):
-        for index in list_of_index:
-            if index < 0 or index > self._tvb.data.shape[2]:
-                self.logger.error("Some of the given indices are out of region range: [0, %s]",
-                                  self._tvb.data.shape[2])
-                raise IndexError
-
-    def _get_time_unit_for_index(self, time_index):
-        return self._tvb.start_time + time_index * self._tvb.sample_period
-
-    def _get_index_for_time_unit(self, time_unit):
-        return int((time_unit - self._tvb.start_time) / self._tvb.sample_period)
-
     def get_time_window(self, index_start, index_end, **kwargs):
         if index_start < 0 or index_end > self._tvb.data.shape[0]:
             self.logger.error("The time indices are outside time series interval: [%s, %s]" %
@@ -430,7 +496,7 @@ class Timeseries(object):
         subtime_data = self._tvb.data[index_start:index_end, :, :, :]
         if subtime_data.ndim == 3:
             subtime_data = numpy.expand_dims(subtime_data, 0)
-        return self.duplicate(data=subtime_data, start_time=self._get_time_unit_for_index(index_start),  **kwargs)
+        return self.duplicate(data=subtime_data, start_time=self._get_time_for_index(index_start), **kwargs)
 
     def get_time_window_by_units(self, unit_start, unit_end, **kwargs):
         end_time = self.end_time
@@ -438,8 +504,8 @@ class Timeseries(object):
             self.logger.error("The time units are outside time series interval: [%s, %s]" %
                               (self._tvb.start_time, end_time))
             raise ValueError
-        index_start = self._get_index_for_time_unit(unit_start)
-        index_end = self._get_index_for_time_unit(unit_end)
+        index_start = self._get_index_for_time(unit_start)
+        index_end = self._get_index_for_time(unit_end)
         return self.get_time_window(index_start, index_end)
 
     def decimate_time(self, new_sample_period, **kwargs):
@@ -462,7 +528,7 @@ class Timeseries(object):
             self.logger.error("No state variables are defined for this instance!")
             raise ValueError
         if PossibleVariables.SOURCE.value in self.variables_labels:
-            return self.get_variables(PossibleVariables.SOURCE.value)
+            return self.get_variables_by_label(PossibleVariables.SOURCE.value)
 
     def get_bipolar(self, **kwargs):
         bipolar_labels, bipolar_inds = monopolar_to_bipolar(self.space_labels)
