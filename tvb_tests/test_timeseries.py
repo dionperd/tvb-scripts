@@ -45,7 +45,7 @@ class TestTimeseries(object):
         assert all(ts_from_2D.time == numpy.array([0, 0.01, 0.02]))
 
         with pytest.raises(KeyError):
-            ts_from_2D.get_state_variable("")
+            ts_from_2D.get_variables("")
 
         ts_r2r3 = ts_from_2D.get_subspace_by_labels(["r2", "r3"])
         assert ts_r2r3.data.ndim == 4
