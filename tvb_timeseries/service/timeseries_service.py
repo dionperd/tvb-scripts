@@ -2,6 +2,7 @@
 from six import string_types
 from collections import OrderedDict
 from itertools import izip, cycle
+from copy import deepcopy
 
 import numpy as np
 from scipy.signal import decimate, convolve, detrend, hilbert
@@ -13,7 +14,7 @@ from tvb_utils.data_structures_utils import isequal_string, ensure_list
 from tvb_utils.computations_utils import select_greater_values_array_inds,\
     select_by_hierarchical_group_metric_clustering
 from tvb_utils.analyzers_utils import abs_envelope, spectrogram_envelope, filter_data
-from tvb_timeseries.model.timeseries import TimeseriesDimensions, LABELS_ORDERING
+from tvb_timeseries.model.timeseries import Timeseries, TimeseriesDimensions, LABELS_ORDERING
 
 
 def decimate_signals(signals, time, decim_ratio):
@@ -133,7 +134,7 @@ class TimeseriesService(object):
         return timeseries.duplicate(np.abs(hilbert(timeseries.data, axis=0)), **kwargs)
 
     def spectrogram_envelope(self, timeseries, lpf=None, hpf=None, nperseg=None, **kwargs):
-        data, time = spectrogram_envelope(timeseries.squeezed, timeseries.sampling_frequency, lpf, hpf, nperseg)
+        data, time = spectrogram_envelope(timeseries.squeezed, timeseries.sample_rate, lpf, hpf, nperseg)
         if len(timeseries.sample_period_unit) > 0 and timeseries.sample_period_unit[0] == "m":
             time *= 1000
         return timeseries.duplicate(data=data, start_time=timeseries.start_time + time[0],
@@ -149,8 +150,8 @@ class TimeseriesService(object):
         return timeseries.duplicate(data=normalize_signals(timeseries.data, normalization, axis, percent), **kwargs)
 
     def filter(self, timeseries, lowcut=None, highcut=None, mode='bandpass', order=3, **kwargs):
-        return timeseries.duplicate(data=filter_data(timeseries.data, timeseries.sampling_frequency,
-                                                lowcut, highcut, mode, order), **kwargs)
+        return timeseries.duplicate(data=filter_data(timeseries.data, timeseries.sample_rate,
+                                                     lowcut, highcut, mode, order), **kwargs)
 
     def log(self, timeseries, **kwargs):
         return timeseries.duplicate(data=np.log(timeseries.data), **kwargs)
@@ -170,23 +171,64 @@ class TimeseriesService(object):
     def correlation(self, timeseries):
         return np.corrcoef(timeseries.squeezed.T)
 
-    def concatenate_in_time(self, timeseries_list, labels=None):
+    def _compile_select_fun(self, **kwargs):
+        select_fun = []
+        for dim, lbl in enumerate(["times", "variables", "labels",  "samples"]):
+            index = ensure_list(kwargs.pop(lbl, []))
+            if len(index) > 0:
+                select_fun.append(lambda ts: getattr(ts, "get_subset")(index, dim))
+        return select_fun
+
+    def select(self, timeseries, select_fun=None, **kwargs):
+        if select_fun is None:
+            select_fun = self._compile_select_fun(**kwargs)
+        for fun in select_fun:
+            timeseries = fun(timeseries)
+        return timeseries, select_fun
+
+    def concatenate(self, timeseries_list, dim, **kwargs):
         timeseries_list = ensure_list(timeseries_list)
-        out_timeseries = timeseries_list[0]
-        if labels is None:
-            labels = out_timeseries.space_labels
-        else:
-            out_timeseries = out_timeseries.get_subspace_by_labels(labels)
-        for id, timeseries in enumerate(timeseries_list[1:]):
-            if np.float32(out_timeseries.sample_period) == np.float32(timeseries.sample_period):
-                out_timeseries.data = np.concatenate([out_timeseries.data,
-                                                      timeseries.get_subspace_by_labels(labels).data], axis=0)
+        n_ts = len(timeseries_list)
+        if n_ts > 0:
+            out_timeseries, select_fun = self.select(timeseries_list[0], **kwargs)
+            if n_ts > 1:
+                for id, timeseries in enumerate(timeseries_list[1:]):
+                    if np.float32(out_timeseries.sample_period) != np.float32(timeseries.sample_period):
+                        raise_value_error("Timeseries concatenation failed!\n"
+                                          "Timeseries %d have a different time step (%s) \n "
+                                          "than the concatenated ones (%s)!" %
+                                          (id, str(np.float32(timeseries.sample_period)),
+                                           str(np.float32(out_timeseries.sample_period))))
+                    else:
+                        timeseries = self.select(timeseries, select_fun)[0]
+                        try:
+                            out_timeseries.set_data(np.concatenate([out_timeseries.data, timeseries.data], axis=dim))
+                            if len(out_timeseries.labels_dimensions[out_timeseries.labels_ordering[dim]]) > 0:
+                                dim_label = out_timeseries.labels_ordering[dim]
+                                out_timeseries.labels_dimensions[dim_label] = \
+                                    np.array(ensure_list(out_timeseries.labels_dimensions[dim_label]) +
+                                             ensure_list(timeseries.labels_dimensions[dim_label]))
+                        except:
+                            raise_value_error("Timeseries concatenation failed!\n"
+                                              "Timeseries %d have a shape (%s) and the concatenated ones (%s)!" %
+                                              (id, str(out_timeseries.shape), str(timeseries.shape)))
+                return out_timeseries
             else:
-                raise_value_error("Timeseries concatenation in time failed!\n"
-                                  "Timeseries %d have a different time step (%s) than the ones before(%s)!" \
-                                  % (id, str(np.float32(timeseries.sample_period)),
-                                     str(np.float32(out_timeseries.sample_period))))
-        return out_timeseries
+                return out_timeseries
+        else:
+            return Timeseries(**kwargs)
+
+    def concatenate_in_time(self, timeseries_list, **kwargs):
+        return self.concatenate(timeseries_list, 0, **kwargs)
+
+    def concatenate_variables(self, timeseries_list, **kwargs):
+        return self.concatenate(timeseries_list, 1, **kwargs)
+
+    def concatenate_in_space(self, timeseries_list, **kwargs):
+        return self.concatenate(timeseries_list, 2, **kwargs)
+
+    def concatenate_samples(self, timeseries_list, **kwargs):
+        return self.concatenate(timeseries_list, 3, **kwargs)
 
     def select_by_metric(self, timeseries, metric, metric_th=None, metric_percentile=None, nvals=None):
         selection = np.unique(select_greater_values_array_inds(metric, metric_th, metric_percentile, nvals))
