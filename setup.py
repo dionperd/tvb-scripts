@@ -22,17 +22,18 @@ setuptools.setup(name='tvb-scripts',
                  version=VERSION,
                  packages=setuptools.find_packages(),
                  include_package_data=True,
-                 description='A package with helper functions (tvb-utils), '
-                             'plotting functions (tvb-plot), '
-                             'a Timeseries model and service (tvb-timeseries), '
-                             'io module (tvb-io) to and from TVB and h5 files'
-                             'and a tvb-head model and services for TVB Structural data, '
+                 description='A package with helper functions, '
+                             'some additional datatypes, '
+                             'plotting functions, '
+                             'a Timeseries model and service, '
+                             'io module to and from TVB and h5 files'
+                             'and a virtual_head model and services for TVB Structural data, '
                              'for more efficient TVB scripting.',
                  license="GPL v3",
                  author="TVB Team",
                  author_email='tvb.admin@thevirtualbrain.org',
                  url='http://www.thevirtualbrain.org',
-                 # download_url='https://github.com/the-virtual-brain/tvb-subject',
+                 # download_url='https://github.com/the-virtual-brain/tvb-scripts',
                  keywords='tvb brain simulator neuroscience human animal neuronal dynamics models delay data')
 
 shutil.rmtree('tvb_scripts.egg-info', True)
