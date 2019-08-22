@@ -384,7 +384,11 @@ class TimeseriesPlotter(BasePlotter):
                                      subtitles, offset, title, figure_name, figsize)
         elif isinstance(timeseries, (numpy.ndarray, dict, list, tuple)):
             time = kwargs.get("time", None)
-            return self.plot_ts(timeseries, time=time, mode=mode, subplots=subplots, special_idx=special_idx,
+            time_unit = kwargs.get("time_unit", "ms")
+            labels = kwargs.get("labels", [])
+            var_labels = kwargs.get("var_labels", [])
+            return self.plot_ts(timeseries, time=time, mode=mode, time_unit=time_unit,
+                                labels=labels, var_labels=var_labels, subplots=subplots, special_idx=special_idx,
                                 subtitles=subtitles, offset=offset, title=title, figure_name=figure_name,
                                 figsize=figsize)
         else:
