@@ -82,9 +82,12 @@ def join_labels_indices_dict(d):
     return out_list
 
 
-def construct_import_path(path, package):
+def construct_import_path(path, package=None):
     path = path.split(".py")[0]
-    start = path.find(package)
+    if isinstance(package, string_types):
+        start = path.find(package)
+    else:
+        start = 0
     return path[start:].replace("/", ".")
 
 
