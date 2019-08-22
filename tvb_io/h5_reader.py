@@ -317,24 +317,43 @@ class H5Reader(object):
         h5_file = h5py.File(path, 'r', libver='latest')
 
         data = h5_file['/data'][()]
-        time = h5_file['/time'][()]
-        labels = h5_file['/labels'][()]
+
+        ts_kwargs = {}
+        labels_dimensions = {}
+        try:
+            time = h5_file['/time'][()]
+            ts_kwargs["time"] = time
+            ts_kwargs["sample_period"] = float(np.mean(np.diff(time)))
+        except:
+            pass
         try:
             labels_ordering = (h5_file['/dimensions_labels'][()]).tolist()
         except:
             labels_ordering = LABELS_ORDERING
-        variables = h5_file['/variables'][()]
-        time_unit = h5_file.attrs["sample_period_unit"]
-        ts_type = h5_file.attrs.get("time_series_type", "")
-        title = h5_file.attrs.get("title", "")
+        try:
+            labels_dimensions.update({labels_ordering[2]: h5_file['/labels'][()]})
+        except:
+            pass
+        try:
+            labels_dimensions.update({labels_ordering[1]: h5_file['/variables'][()]})
+        except:
+            pass
+        if len(labels_dimensions) > 0:
+            ts_kwargs["labels_dimensions"] = labels_dimensions
+        time_unit = str(h5_file.attrs.get("sample_period_unit", ""))
+        if len(time_unit) > 0:
+            ts_kwargs["sample_period_unit"] = time_unit
+        ts_type = str(h5_file.attrs.get("time_series_type", ""))
+        if len(ts_type) > 0:
+            ts_kwargs["ts_type"] = ts_type
+        title = str(h5_file.attrs.get("title", ""))
+        if len(title) > 0:
+            ts_kwargs["title"] = title
         self.logger.info("First Channel sv sum: " + str(numpy.sum(data[:, 0])))
         self.logger.info("Successfully read Timeseries!")  #: %s" % data)
         h5_file.close()
 
-        return timeseries(data, labels_ordering=labels_ordering,
-                          labels_dimensions={labels_ordering[2]: labels, labels_ordering[1]: variables},
-                          stat_time=time[0], sample_period=numpy.mean(numpy.diff(time)),
-                          sample_period_unit=time_unit, ts_type=ts_type, title=title)
+        return timeseries(data, labels_ordering=labels_ordering, **ts_kwargs)
 
     def read_dictionary(self, path, type=None):
         """
