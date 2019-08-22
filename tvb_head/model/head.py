@@ -58,7 +58,7 @@ class Head(object):
     def filter_regions(self, filter_arr):
         return self.connectivity.region_labels[filter_arr]
 
-    def get_sensors(self, s_type=SensorTypes.TYPE_EEG, name_or_index=None):
+    def get_sensors(self, s_type=SensorTypes.TYPE_EEG.value, name_or_index=None):
         sensors_set = OrderedDict()
         if s_type not in SensorTypesNames:
             raise_value_error("Invalid input sensor type!: %s" % str(s_type))
@@ -79,7 +79,7 @@ class Head(object):
                 return sensors_set
         return out_sensor, out_projection
 
-    def set_sensors(self, input_sensors, s_type=SensorTypes.TYPE_EEG, reset=False):
+    def set_sensors(self, input_sensors, s_type=SensorTypes.TYPE_EEG.value, reset=False):
         if not isinstance(input_sensors, (Sensors, dict, list, tuple)):
             return raise_value_error("Invalid input sensors instance''!: %s" % str(input_sensors))
         if s_type not in SensorTypesNames:
