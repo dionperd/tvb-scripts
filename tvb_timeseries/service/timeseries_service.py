@@ -109,8 +109,8 @@ class TimeseriesService(object):
 
     def decimate(self, timeseries, decim_ratio, **kwargs):
         if decim_ratio > 1:
-            return timeseries.duplicate(timeseries.data[0:timeseries.time_length:decim_ratio],
-                                        sample_period=decim_ratio*timeseries.sample_period, **kwargs)
+            return timeseries.duplicate(data=timeseries.data[0:timeseries.time_length:decim_ratio],
+                                        sample_period=float(decim_ratio*timeseries.sample_period), **kwargs)
         else:
             return timeseries.duplicate()
 
@@ -118,7 +118,7 @@ class TimeseriesService(object):
         if decim_ratio > 1:
             decim_data, decim_time, decim_dt, decim_n_times = decimate_signals(timeseries.squeezed,
                                                                                timeseries.time, decim_ratio)
-            return timeseries.duplicate(decim_data, sample_period=decim_dt, **kwargs)
+            return timeseries.duplicate(data=decim_data, sample_period=float(decim_dt), **kwargs)
         else:
             return timeseries.duplicate(**kwargs)
 
@@ -128,10 +128,10 @@ class TimeseriesService(object):
             kernel = np.ones((n_kernel_points, 1, 1, 1)) / n_kernel_points
         else:
             kernel = kernel * np.ones((n_kernel_points, 1, 1, 1))
-        return timeseries.duplicate(convolve(timeseries.data, kernel, mode='same'), **kwargs)
+        return timeseries.duplicate(data=convolve(timeseries.data, kernel, mode='same'), **kwargs)
 
     def hilbert_envelope(self, timeseries, **kwargs):
-        return timeseries.duplicate(np.abs(hilbert(timeseries.data, axis=0)), **kwargs)
+        return timeseries.duplicate(data=np.abs(hilbert(timeseries.data, axis=0)), **kwargs)
 
     def spectrogram_envelope(self, timeseries, lpf=None, hpf=None, nperseg=None, **kwargs):
         data, time = spectrogram_envelope(timeseries.squeezed, timeseries.sample_rate, lpf, hpf, nperseg)
