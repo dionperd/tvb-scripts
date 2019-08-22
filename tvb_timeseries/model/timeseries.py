@@ -189,7 +189,6 @@ class Timeseries(object):
 
         self._tvb.configure()
         self.configure_time()
-        self.configure_sampling_frequency()
         self.configure_sample_rate()
         if len(self.title) == 0:
             self._tvb.title = "%s Time Series" % self.ts_type
@@ -375,11 +374,11 @@ class Timeseries(object):
         return self._tvb.length_1d
 
     @property
-    def number_of_labels(self):
+    def number_of_variables(self):
         return self._tvb.length_2d
 
     @property
-    def number_of_variables(self):
+    def number_of_labels(self):
         return self._tvb.length_3d
 
     @property
