@@ -313,12 +313,3 @@ def compute_seeg_lin(source_timeseries, projection_data):
 
 def compute_seeg_exp(source_timeseries, projection_data):
     return np.log(np.exp(source_timeseries).dot(projection_data.T))
-
-
-
-
-
-
-
-
-
