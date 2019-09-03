@@ -5,6 +5,10 @@ from datetime import datetime
 
 import numpy as np
 
+from tvb.basic.profile import TvbProfile
+
+TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
+
 
 class GenericConfig(object):
     _module_path = os.path.dirname(__file__)
