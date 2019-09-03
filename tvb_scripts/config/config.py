@@ -23,7 +23,7 @@ class InputConfig(object):
             return self._head_folder
 
         if not self.IS_TVB_MODE:
-            return os.path.join(self._base_input, "data", "virtual_head")
+            return os.path.join(self._base_input, "data", "head")
 
         # or else, try to find tvb_data module
         try:
