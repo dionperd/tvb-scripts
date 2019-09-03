@@ -6,8 +6,10 @@ from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_err
 from tvb_scripts.utils.data_structures_utils import isequal_string, is_integer
 from tvb_scripts.model.virtual_head.sensors import Sensors, SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
 
-from tvb.datatypes.projections import ProjectionMatrix
+from tvb.datatypes.connectivity import Connectivity
 from tvb.datatypes.cortex import Cortex
+from tvb.datatypes.surfaces import Surface
+from tvb.datatypes.projections import ProjectionMatrix
 
 
 class Head(object):
@@ -48,12 +50,16 @@ class Head(object):
         return cortex
 
     def configure(self):
-        self.connectivity.configure()
-        self.cortical_surface.configure()
-        self.subcortical_surface.configure()
+        if isinstance(self.connectivity, Connectivity):
+            self.connectivity.configure()
+        if isinstance(self.cortical_surface, Surface):
+            self.cortical_surface.configure()
+        if isinstance(self.cortical_surface, Surface):
+            self.subcortical_surface.configure()
         for s_type, sensors_set in self.sensors.items():
             for sensor, projection in sensors_set.items():
-                sensor.configure()
+                if isinstance(sensor, Sensors):
+                    sensor.configure()
 
     def filter_regions(self, filter_arr):
         return self.connectivity.region_labels[filter_arr]
