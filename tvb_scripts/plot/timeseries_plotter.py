@@ -374,6 +374,8 @@ class TimeseriesPlotter(BasePlotter):
     def plot_timeseries(self, timeseries, mode="ts", subplots=None, special_idx=[], subtitles=[],
                         offset=0.5, title=None, figure_name=None, figsize=None, **kwargs):
         if isinstance(timeseries, Timeseries):
+            if title is None:
+                title = timeseries.title
             return self.plot_ts(numpy.swapaxes(timeseries.data, 1, 2),
                                 timeseries.time, timeseries.variables_labels,
                                 mode, subplots, special_idx, subtitles, timeseries.space_labels,
