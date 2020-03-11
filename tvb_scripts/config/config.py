@@ -1,9 +1,8 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
 
 import os
+import numpy
 from datetime import datetime
-
-import numpy as np
 
 from tvb.basic.profile import TvbProfile
 
@@ -26,9 +25,6 @@ class InputConfig(object):
         if self._head_folder is not None:
             return self._head_folder
 
-        if not self.IS_TVB_MODE:
-            return os.path.join(self._base_input, "data", "head")
-
         # or else, try to find tvb_data module
         try:
             import tvb_data
@@ -48,10 +44,10 @@ class InputConfig(object):
 
         return os.path.join(self._base_input, "data", "raw")
 
-    def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_H5, raw_folder=None):
+    def __init__(self, head_folder=None, raw_folder=None, data_mode=GenericConfig.MODE_TVB):
         self._head_folder = head_folder
-        self._data_mode = data_mode
         self._raw_data = raw_folder
+        self._data_mode = data_mode
 
 
 class OutputConfig(object):
@@ -107,29 +103,36 @@ class FiguresConfig(object):
     SUPER_LARGE_SIZE = (80, 40)
     LARGE_SIZE = (20, 15)
     SMALL_SIZE = (15, 10)
-    NOTEBOOK_SIZE = (10, 7)
+    NOTEBOOK_SIZE = (20, 10)
     FIG_FORMAT = 'png'
     SAVE_FLAG = True
     SHOW_FLAG = False
     MOUSE_HOOVER = False
-    MATPLOTLIB_BACKEND = "Qt4Agg"  # "Agg" # ,
-    FONTSIZE=10
-    SMALL_FONTSIZE=8
-    LARGE_FONTSIZE = 8
+    MATPLOTLIB_BACKEND = "Agg"  # "Qt4Agg"
+    FONTSIZE = 10
+
+    def largest_size(self):
+        import sys
+        if 'IPython' not in sys.modules:
+            return self.LARGE_SIZE
+        from IPython import get_ipython
+        if getattr(get_ipython(), 'kernel', None) is not None:
+            return self.NOTEBOOK_SIZE
+        else:
+            return self.LARGE_SIZE
 
 
 class CalculusConfig(object):
-
     # Normalization configuration
     WEIGHTS_NORM_PERCENT = 99
 
     # If True a plot will be generated to choose the number of eigenvalues to keep
     INTERACTIVE_ELBOW_POINT = False
 
-    MIN_SINGLE_VALUE = np.finfo("single").min
-    MAX_SINGLE_VALUE = np.finfo("single").max
-    MAX_INT_VALUE = np.iinfo(np.int64).max
-    MIN_INT_VALUE = np.iinfo(np.int64).max
+    MIN_SINGLE_VALUE = numpy.finfo("single").min
+    MAX_SINGLE_VALUE = numpy.finfo("single").max
+    MAX_INT_VALUE = numpy.iinfo(numpy.int64).max
+    MIN_INT_VALUE = numpy.iinfo(numpy.int64).max
 
 
 class Config(object):
@@ -137,8 +140,9 @@ class Config(object):
     figures = FiguresConfig()
     calcul = CalculusConfig()
 
-    def __init__(self, head_folder=None, data_mode=GenericConfig.MODE_TVB,
-                 raw_data_folder=None, output_base=None, separate_by_run=False):
-        self.input = InputConfig(head_folder, data_mode, raw_data_folder)
+    def __init__(self, head_folder=None, raw_data_folder=None, output_base=None, separate_by_run=False):
+        self.input = InputConfig(head_folder, raw_data_folder)
         self.out = OutputConfig(output_base, separate_by_run)
 
+
+CONFIGURED = Config()

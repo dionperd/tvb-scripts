@@ -5,10 +5,10 @@ import h5py
 import numpy
 from tvb_scripts.utils.log_error_utils import raise_value_error
 from tvb_scripts.utils.file_utils import change_filename_or_overwrite, write_metadata
-from tvb_scripts.model.virtual_head.connectivity import ConnectivityH5Field
-from tvb_scripts.model.virtual_head.sensors import SensorsH5Field, SensorTypes, Sensors
-from tvb_scripts.model.virtual_head.surface import SurfaceH5Field, Surface
-from tvb_scripts.model.timeseries import Timeseries
+from tvb_scripts.virtual_head.connectivity import ConnectivityH5Field
+from tvb_scripts.virtual_head import SensorsH5Field, SensorTypes, Sensors
+from tvb_scripts.virtual_head.surface import SurfaceH5Field, Surface
+from tvb_scripts.time_series.model import TimeSeries
 from tvb_scripts.io.h5_writer_base import H5WriterBase
 
 from tvb.datatypes.projections import ProjectionMatrix
@@ -16,9 +16,6 @@ from tvb.datatypes.region_mapping import RegionMapping, RegionVolumeMapping
 from tvb.datatypes.structural import StructuralMRI
 
 
-KEY_TYPE = "Type"
-KEY_VERSION = "Version"
-KEY_DATE = "Last_update"
 KEY_NODES = "Number_of_nodes"
 KEY_SENSORS = "Number_of_sensors"
 KEY_MAX = "Max_value"
@@ -234,15 +231,16 @@ class H5Writer(H5WriterBase):
 
         self.logger.info("Writing a TS at:\n" + path)
         h5_file = h5py.File(path, 'a', libver='latest')
-        write_metadata({KEY_TYPE: "TimeSeries"}, h5_file, KEY_DATE, KEY_VERSION)
+        write_metadata({self.H5_TYPE_ATTRIBUTE: "TimeSeries"}, h5_file,
+                       self.H5_DATE_ATTRIBUTE, self.H5_VERSION_ATTRIBUTE)
         if isinstance(raw_data, dict):
             for data in raw_data:
                 if len(raw_data[data].shape) == 2 and str(raw_data[data].dtype)[0] == "f":
                     h5_file.create_dataset("/" + data, data=raw_data[data])
                     write_metadata({KEY_MAX: raw_data[data].max(), KEY_MIN: raw_data[data].min(),
                                     KEY_STEPS: raw_data[data].shape[0], KEY_CHANNELS: raw_data[data].shape[1],
-                                    KEY_SV: 1, KEY_SAMPLING: sampling_period, KEY_START: 0.0}, h5_file, KEY_DATE,
-                                   KEY_VERSION, "/" + data)
+                                    KEY_SV: 1, KEY_SAMPLING: sampling_period, KEY_START: 0.0}, h5_file,
+                                    self.H5_DATE_ATTRIBUTE, self.H5_VERSION_ATTRIBUTE, "/" + data)
                 else:
                     raise_value_error("Invalid TS data. 2D (time, nodes) numpy.ndarray of floats expected")
         elif isinstance(raw_data, numpy.ndarray):
@@ -250,10 +248,10 @@ class H5Writer(H5WriterBase):
                 h5_file.create_dataset("/data", data=raw_data)
                 write_metadata({KEY_MAX: raw_data.max(), KEY_MIN: raw_data.min(), KEY_STEPS: raw_data.shape[0],
                                 KEY_CHANNELS: raw_data.shape[1], KEY_SV: 1, KEY_SAMPLING: sampling_period,
-                                KEY_START: 0.0}, h5_file, KEY_DATE, KEY_VERSION, "/data")
+                                KEY_START: 0.0}, h5_file, self.H5_DATE_ATTRIBUTE, self.H5_VERSION_ATTRIBUTE, "/data")
             else:
                 raise_value_error("Invalid TS data. 2D (time, nodes) numpy.ndarray of floats expected")
-        elif isinstance(raw_data, Timeseries):
+        elif isinstance(raw_data, TimeSeries):
             if len(raw_data.shape) == 4 and str(raw_data.data.dtype)[0] == "f":
                 h5_file.create_dataset("/data", data=raw_data.data)
                 h5_file.create_dataset("/time", data=raw_data.time)
@@ -268,7 +266,7 @@ class H5Writer(H5WriterBase):
                 write_metadata({KEY_MAX: raw_data.data.max(), KEY_MIN: raw_data.data.min(),
                                 KEY_STEPS: raw_data.data.shape[0], KEY_CHANNELS: raw_data.data.shape[1],
                                 KEY_SV: 1, KEY_SAMPLING: raw_data.sample_period,
-                                KEY_START: raw_data.start_time}, h5_file, KEY_DATE, KEY_VERSION, "/data")
+                                KEY_START: raw_data.start_time}, h5_file, self.H5_DATE_ATTRIBUTE, self.H5_VERSION_ATTRIBUTE, "/data")
             else:
                 raise_value_error("Invalid TS data. 4D (time, nodes) numpy.ndarray of floats expected")
         else:

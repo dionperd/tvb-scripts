@@ -11,11 +11,11 @@ TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_error
 from tvb_scripts.utils.data_structures_utils import ensure_list
-from tvb_scripts.model.virtual_head.surface import CorticalSurface, SubcorticalSurface
-from tvb_scripts.model.virtual_head.sensors import \
+from tvb_scripts.virtual_head.surface import CorticalSurface, SubcorticalSurface
+from tvb_scripts.virtual_head import \
     Sensors, SensorTypesToClassesDict, SensorTypes, SensorTypesToProjectionDict
-from tvb_scripts.model.virtual_head.connectivity import Connectivity
-from tvb_scripts.model.virtual_head.head import Head
+from tvb_scripts.virtual_head.connectivity import Connectivity
+from tvb_scripts.virtual_head.head import Head
 
 from tvb.datatypes import region_mapping, structural
 from tvb.datatypes.projections import ProjectionMatrix
@@ -26,16 +26,13 @@ class TVBReader(object):
 
     def read_connectivity(self, path):
         if os.path.isfile(path):
-            conn = Connectivity().from_tvb_file(path)
-            conn.file_path = path
-            conn.configure()
-            return conn
+            return Connectivity.from_tvb_file(path)
         else:
             raise_value_error(("\n No Connectivity file found at path %s!" % str(path)))
 
     def read_cortical_surface(self, path, surface_class):
         if os.path.isfile(path):
-            surf = surface_class().from_tvb_file(path)
+            surf = surface_class.from_tvb_file(path)
             surf.configure()
             return surf
         else:

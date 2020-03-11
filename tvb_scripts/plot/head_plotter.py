@@ -5,7 +5,7 @@ from matplotlib import pyplot
 import numpy
 
 from tvb_scripts.utils.computations_utils import compute_in_degree
-from tvb_scripts.model.virtual_head.sensors import Sensors
+from tvb_scripts.virtual_head.sensors import Sensors
 from tvb_scripts.plot.base_plotter import BasePlotter
 
 from tvb.datatypes.projections import ProjectionMatrix
@@ -43,7 +43,7 @@ class HeadPlotter(BasePlotter):
 
     def _plot_sensors(self, sensors, projection, region_labels, count=1):
         figure, ax, cax = self._plot_projection(sensors, projection, region_labels,
-                                                title= "%d - %s - Projection" % (count, sensors.sensors_type))
+                                                title="%d - %s - Projection" % (count, sensors.sensors_type))
         count += 1
         return count, figure, ax, cax
 

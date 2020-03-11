@@ -1,14 +1,16 @@
 # coding=utf-8
+
 from six import string_types
 from collections import OrderedDict
 
 from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_error, warning
 from tvb_scripts.utils.data_structures_utils import isequal_string, is_integer
-from tvb_scripts.model.virtual_head.sensors import Sensors, SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
+from tvb_scripts.virtual_head import SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
 
 from tvb.datatypes.connectivity import Connectivity
+from tvb.datatypes.surfaces import CorticalSurface
 from tvb.datatypes.cortex import Cortex
-from tvb.datatypes.surfaces import Surface
+from tvb.datatypes.sensors import Sensors
 from tvb.datatypes.projections import ProjectionMatrix
 
 
@@ -52,9 +54,9 @@ class Head(object):
     def configure(self):
         if isinstance(self.connectivity, Connectivity):
             self.connectivity.configure()
-        if isinstance(self.cortical_surface, Surface):
+        if isinstance(self.cortical_surface, CorticalSurface):
             self.cortical_surface.configure()
-        if isinstance(self.cortical_surface, Surface):
+        if isinstance(self.cortical_surface, CorticalSurface):
             self.subcortical_surface.configure()
         for s_type, sensors_set in self.sensors.items():
             for sensor, projection in sensors_set.items():

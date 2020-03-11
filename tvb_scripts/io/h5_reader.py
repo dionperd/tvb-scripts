@@ -4,17 +4,16 @@ import os
 import h5py
 from collections import OrderedDict
 
-import numpy
+import numpy as np
 
 from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_error
-from tvb_scripts.datatypes.dot_dicts import DictDot, OrderedDictDot
 from tvb_scripts.utils.data_structures_utils import isequal_string
-from tvb_scripts.model.virtual_head.connectivity import Connectivity, ConnectivityH5Field
-from tvb_scripts.model.virtual_head.head import Head
-from tvb_scripts.model.virtual_head.sensors import \
+from tvb_scripts.virtual_head.connectivity import Connectivity, ConnectivityH5Field
+from tvb_scripts.virtual_head.head import Head
+from tvb_scripts.virtual_head.sensors import \
     Sensors, SensorTypesToClassesDict, SensorsH5Field, SensorTypesToProjectionDict
-from tvb_scripts.model.virtual_head.surface import CorticalSurface, SubcorticalSurface, SurfaceH5Field
-from tvb_scripts.model.timeseries import LABELS_ORDERING, Timeseries
+from tvb_scripts.virtual_head.surface import CorticalSurface, SubcorticalSurface, SurfaceH5Field
+from tvb_scripts.time_series.model import LABELS_ORDERING, TimeSeries
 from tvb_scripts.io.h5_writer import H5Writer
 
 from tvb.datatypes import region_mapping, structural
@@ -52,27 +51,27 @@ class H5Reader(object):
             try:
                 tract_lengths = h5_file['/' + ConnectivityH5Field.TRACTS][()]
             except:
-                tract_lengths = numpy.array([])
+                tract_lengths = np.array([])
             try:
                 region_centres = h5_file['/' + ConnectivityH5Field.CENTERS][()]
             except:
-                region_centres = numpy.array([])
+                region_centres = np.array([])
             try:
                 region_labels = h5_file['/' + ConnectivityH5Field.REGION_LABELS][()]
             except:
-                region_labels = numpy.array([])
+                region_labels = np.array([])
             try:
                 orientations = h5_file['/' + ConnectivityH5Field.ORIENTATIONS][()]
             except:
-                orientations = numpy.array([])
+                orientations = np.array([])
             try:
                 hemispheres = h5_file['/' + ConnectivityH5Field.HEMISPHERES][()]
             except:
-                hemispheres = numpy.array([])
+                hemispheres = np.array([])
             try:
                 areas = h5_file['/' + ConnectivityH5Field.AREAS][()]
             except:
-                areas = numpy.array([])
+                areas = np.array([])
 
             h5_file.close()
 
@@ -103,11 +102,11 @@ class H5Reader(object):
         try:
             vertex_normals = h5_file['/' + SurfaceH5Field.VERTEX_NORMALS][()]
         except:
-            vertex_normals = numpy.array([])
+            vertex_normals = np.array([])
         try:
             triangle_normals = h5_file['/' + SurfaceH5Field.TRIANGLE_NORMALS][()]
         except:
-            triangle_normals = numpy.array([])
+            triangle_normals = np.array([])
         h5_file.close()
 
         surface = surface_class(file_path=path, vertices=vertices, triangles=triangles,
@@ -161,11 +160,11 @@ class H5Reader(object):
         try:
             labels = h5_file['/' + SensorsH5Field.LABELS][()]
         except:
-            labels = numpy.array([])
+            labels = np.array([])
         try:
             orientations = h5_file['/' + SensorsH5Field.ORIENTATIONS][()]
         except:
-            orientations = numpy.array([])
+            orientations = np.array([])
         name = h5_file.attrs.get("name", name)
         s_type = h5_file.attrs.get("Sensors_subtype", "")
 
@@ -300,15 +299,15 @@ class H5Reader(object):
         total_time = int(h5_file["/"].attrs["Simulated_period"][0])
         nr_of_steps = int(h5_file["/data"].attrs["Number_of_steps"][0])
         start_time = float(h5_file["/data"].attrs["Start_time"][0])
-        time = numpy.linspace(start_time, total_time, nr_of_steps)
+        time = np.linspace(start_time, total_time, nr_of_steps)
 
-        self.logger.info("First Channel sv sum: " + str(numpy.sum(data[:, 0])))
+        self.logger.info("First Channel sv sum: " + str(np.sum(data[:, 0])))
         self.logger.info("Successfully read timeseries!")  #: %s" % data)
         h5_file.close()
 
         return time, data
 
-    def read_timeseries(self, path, timeseries=Timeseries):
+    def read_timeseries(self, path, timeseries=TimeSeries):
         """
         :param path: Path towards a valid TimeSeries H5 file
         :return: Timeseries data and time in 2 numpy arrays
@@ -349,7 +348,7 @@ class H5Reader(object):
         title = str(h5_file.attrs.get("title", ""))
         if len(title) > 0:
             ts_kwargs["title"] = title
-        self.logger.info("First Channel sv sum: " + str(numpy.sum(data[:, 0])))
+        self.logger.info("First Channel sv sum: " + str(np.sum(data[:, 0])))
         self.logger.info("Successfully read Timeseries!")  #: %s" % data)
         h5_file.close()
 
@@ -393,9 +392,5 @@ class H5GroupHandlers(object):
             dictionary.update({attr: group.attrs[attr]})
         if type is None:
             type = group.attrs[H5_SUBTYPE_ATTRIBUTE]
-        if isequal_string(type, "DictDot"):
-            return DictDot(dictionary)
-        elif isequal_string(type, "OrderedDictDot"):
-            return OrderedDictDot(dictionary)
         else:
             return dictionary

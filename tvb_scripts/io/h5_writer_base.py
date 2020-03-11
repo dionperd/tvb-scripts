@@ -11,8 +11,10 @@ from tvb_scripts.utils.file_utils import change_filename_or_overwrite
 class H5WriterBase(object):
     logger = initialize_logger(__name__)
 
-    H5_TYPE_ATTRIBUTE = "EPI_Type"
-    H5_SUBTYPE_ATTRIBUTE = "EPI_Subtype"
+    H5_TYPE_ATTRIBUTE = "Type"
+    H5_SUBTYPE_ATTRIBUTE = "Subtype"
+    H5_VERSION_ATTRIBUTE = "Version"
+    H5_DATE_ATTRIBUTE = "Last_update"
 
     def _determine_datasets_and_attributes(self, object, datasets_size=None):
         datasets_dict = {}
