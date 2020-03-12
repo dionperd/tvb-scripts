@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from tvb_scripts.config.config import OutputConfig
+from tvb_scripts.config import OutputConfig
 
 
 def initialize_logger(name, target_folder=OutputConfig().FOLDER_LOGS):

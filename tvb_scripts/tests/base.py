@@ -2,7 +2,7 @@
 
 import os
 import numpy
-from tvb_scripts.config.config import Config
+from tvb_scripts.config import Config
 from tvb_scripts.io.h5_reader import H5Reader
 from tvb_scripts.virtual_head.connectivity import Connectivity
 from tvb_scripts.virtual_head import Sensors

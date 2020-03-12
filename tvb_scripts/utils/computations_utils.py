@@ -5,7 +5,7 @@ from sklearn.cluster import AgglomerativeClustering
 
 import numpy as np
 
-from tvb_scripts.config.config import FiguresConfig, CalculusConfig
+from tvb_scripts.config import FiguresConfig, CalculusConfig
 from tvb_scripts.utils.log_error_utils import initialize_logger, warning
 from tvb_scripts.utils.data_structures_utils import is_integer
 

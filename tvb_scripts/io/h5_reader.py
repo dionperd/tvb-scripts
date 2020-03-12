@@ -7,13 +7,13 @@ from collections import OrderedDict
 import numpy as np
 
 from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_error
-from tvb_scripts.utils.data_structures_utils import isequal_string
 from tvb_scripts.virtual_head.connectivity import Connectivity, ConnectivityH5Field
 from tvb_scripts.virtual_head.head import Head
 from tvb_scripts.virtual_head.sensors import \
     Sensors, SensorTypesToClassesDict, SensorsH5Field, SensorTypesToProjectionDict
 from tvb_scripts.virtual_head.surface import CorticalSurface, SubcorticalSurface, SurfaceH5Field
-from tvb_scripts.time_series.model import LABELS_ORDERING, TimeSeries
+from tvb_scripts.time_series.model import LABELS_ORDERING, TimeSeriesDict, TimeSeries
+from tvb_scripts.time_series.time_series_xarray import TimeSeriesDict as XarrayimeSeriesDict
 from tvb_scripts.io.h5_writer import H5Writer
 
 from tvb.datatypes import region_mapping, structural
@@ -307,7 +307,7 @@ class H5Reader(object):
 
         return time, data
 
-    def read_timeseries(self, path, timeseries=TimeSeries):
+    def read_timeseries(self, path, time_series_dict=TimeSeriesDict):
         """
         :param path: Path towards a valid TimeSeries H5 file
         :return: Timeseries data and time in 2 numpy arrays
@@ -342,9 +342,7 @@ class H5Reader(object):
         time_unit = str(h5_file.attrs.get("sample_period_unit", ""))
         if len(time_unit) > 0:
             ts_kwargs["sample_period_unit"] = time_unit
-        ts_type = str(h5_file.attrs.get("time_series_type", ""))
-        if len(ts_type) > 0:
-            ts_kwargs["ts_type"] = ts_type
+        ts_type = str(h5_file.attrs.get("time_series_type", "base"))
         title = str(h5_file.attrs.get("title", ""))
         if len(title) > 0:
             ts_kwargs["title"] = title
@@ -352,7 +350,13 @@ class H5Reader(object):
         self.logger.info("Successfully read Timeseries!")  #: %s" % data)
         h5_file.close()
 
-        return timeseries(data, labels_ordering=labels_ordering, **ts_kwargs)
+        return TimeSeriesDict[ts_type](data, labels_ordering=labels_ordering, **ts_kwargs)
+
+    def read_time_series(self, path):
+        return self.read_timeseries(path, time_series_dict=TimeSeriesDict)
+
+    def read_xarray_time_series(self, path):
+        return self.read_timeseries(path, time_series_dict=XarrayimeSeriesDict)
 
     def read_dictionary(self, path, type=None):
         """

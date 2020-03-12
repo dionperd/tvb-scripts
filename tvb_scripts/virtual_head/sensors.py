@@ -106,12 +106,12 @@ class SensorsMEG(Sensors, TVBSensorsMEG):
 
 class SensorsInternal(Sensors, TVBSensorsInternal):
     elec_labels = NArray(
-        type=np.str,
+        dtype=np.str,
         label="Electrodes' labels", default=None, required=False,
         doc="""Labels of electrodes.""")
 
     elec_inds = NArray(
-        type=np.str,
+        dtype=np.int,
         label="Electrodes' indices", default=None, required=False,
         doc="""Indices of electrodes.""")
 

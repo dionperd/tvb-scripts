@@ -7,7 +7,7 @@ import numpy as np
 from collections import OrderedDict
 from copy import deepcopy
 from tvb_scripts.utils.log_error_utils import warning, raise_value_error, raise_import_error, initialize_logger
-from tvb_scripts.config.config import CalculusConfig
+from tvb_scripts.config import CalculusConfig
 
 
 logger = initialize_logger(__name__)
@@ -733,7 +733,6 @@ def sort_events_by_x_and_y(events, x="senders", y="times",
 def data_xarray_from_continuous_events(events, times, senders, variables=[],
                                        filter_senders=None, exclude_senders=[], name=None,
                                        dims_names=["Variable", "Neuron", "Time"]):
-    from xarray import DataArray
     unique_times = np.unique(times).tolist()
     if filter_senders is None:
         filter_senders = np.unique(senders).tolist()

@@ -3,7 +3,7 @@
 import os
 import numpy
 
-from tvb_scripts.config.config import Config, FiguresConfig
+from tvb_scripts.config import Config, FiguresConfig
 
 import matplotlib
 matplotlib.use(FiguresConfig().MATPLOTLIB_BACKEND)
@@ -33,15 +33,13 @@ class BasePlotter(object):
             pyplot.close()
 
     @staticmethod
-    def _figure_filename(fig=None, figure_name=None):
-        if fig is None:
-            fig = pyplot.gcf()
+    def _figure_filename(fig=pyplot.gcf(), figure_name=None):
         if figure_name is None:
             figure_name = fig.get_label()
         figure_name = figure_name.replace(": ", "_").replace(" ", "_").replace("\t", "_").replace(",", "")
         return figure_name
 
-    def _save_figure(self, fig, figure_name=None):
+    def _save_figure(self, fig=pyplot.gcf(), figure_name=None):
         if self.config.figures.SAVE_FLAG:
             figure_name = self._figure_filename(fig, figure_name)
             figure_name = figure_name[:numpy.min([100, len(figure_name)])] + '.' + self.config.figures.FIG_FORMAT
@@ -51,7 +49,7 @@ class BasePlotter(object):
             pyplot.savefig(os.path.join(figure_dir, figure_name))
 
     @staticmethod
-    def rect_subplot_shape(self, n, mode="col"):
+    def rect_subplot_shape(n, mode="col"):
         nj = int(numpy.ceil(numpy.sqrt(n)))
         ni = int(numpy.ceil(1.0 * n / nj))
         if mode.find("row") >= 0:

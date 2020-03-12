@@ -3,7 +3,7 @@ from tvb_scripts.utils.log_error_utils import warning
 from tvb.basic.neotraits.api import HasTraits, Attr
 
 
-class Base(HasTraits):
+class BaseModel(HasTraits):
 
     file_path = Attr(
         field_type=str,

@@ -665,3 +665,12 @@ class TimeSeriesVolume(TimeSeries):
         summary = super(TimeSeriesVolume, self).summary_info()
         summary.update({"Source Volume": self.volume.title})
         return summary
+
+
+TimeSeriesDict = {TimeSeries.__class__.__name__: TimeSeries,
+                  TimeSeriesRegion.__class__.__name__: TimeSeriesRegion,
+                  TimeSeriesVolume.__class__.__name__: TimeSeriesVolume,
+                  TimeSeriesSurface.__class__.__name__: TimeSeriesSurface,
+                  TimeSeriesEEG.__class__.__name__: TimeSeriesEEG,
+                  TimeSeriesMEG.__class__.__name__: TimeSeriesMEG,
+                  TimeSeriesSEEG.__class__.__name__: TimeSeriesSEEG}

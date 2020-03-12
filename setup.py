@@ -17,11 +17,13 @@ import setuptools
 
 VERSION = "1.0.0"
 
+INSTALL_REQUIREMENTS = ["pandas", "xarray"]
 
 setuptools.setup(name='tvb-scripts',
                  version=VERSION,
                  packages=setuptools.find_packages(),
                  include_package_data=True,
+                 install_requires=INSTALL_REQUIREMENTS,
                  description='A package with helper functions, '
                              'some additional datatypes, '
                              'plotting functions, '

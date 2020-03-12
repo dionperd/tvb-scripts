@@ -3,7 +3,7 @@
 from six import string_types
 from enum import Enum
 from copy import deepcopy
-from collections import OrderedDict
+
 import numpy
 from tvb_scripts.utils.log_error_utils import initialize_logger, warning
 from tvb_scripts.utils.data_structures_utils import ensure_list, is_integer, monopolar_to_bipolar
@@ -579,6 +579,15 @@ class TimeSeriesSEEG(TimeSeriesSensors, TimeSeriesSEEGTVB):
     @property
     def SEEGsensor_labels(self):
         return self.space_labels
+
+
+TimeSeriesDict = {TimeSeries.__class__.__name__: TimeSeries,
+                  TimeSeriesRegion.__class__.__name__: TimeSeriesRegion,
+                  TimeSeriesVolume.__class__.__name__: TimeSeriesVolume,
+                  TimeSeriesSurface.__class__.__name__: TimeSeriesSurface,
+                  TimeSeriesEEG.__class__.__name__: TimeSeriesEEG,
+                  TimeSeriesMEG.__class__.__name__: TimeSeriesMEG,
+                  TimeSeriesSEEG.__class__.__name__: TimeSeriesSEEG}
 
 
 if __name__ == "__main__":
