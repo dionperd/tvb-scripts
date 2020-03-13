@@ -405,8 +405,20 @@ def get_val_key_for_first_keymatch_in_dict(name, pkeys, **kwargs):
 
 
 def labels_to_inds(labels, target_labels):
-    return np.unique(np.where([lbl in target_labels
-                               for lbl in labels])[0])
+    if isinstance(target_labels, string_types):
+        return_single_element = True
+        target_labels = ensure_list(target_labels)
+    else:
+        target_labels = list(target_labels)
+        return_single_element = False
+    inds = []
+    for lbl in target_labels:
+        inds.append(labels.index(lbl))
+    if return_single_element:
+        # if there was only one label string input
+        return inds[0]
+    else:
+        return inds
 
 
 def generate_region_labels(n_regions, labels=[], str=". ", numbering=True, numbers=[]):

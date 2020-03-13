@@ -48,12 +48,6 @@ class Sensors(TVBSensors, BaseModel):
         default='', required=False,
         doc="Sensors' name")
 
-    @classmethod
-    def from_file(cls, filepath, **kwargs):
-        result = cls.from_tvb_instance(cls.from_file(filepath), **kwargs)
-        result.file_path = filepath
-        return result
-
     def configure(self, remove_leading_zeros_from_labels=False):
         if len(self.labels) > 0:
                 if remove_leading_zeros_from_labels:
@@ -61,13 +55,7 @@ class Sensors(TVBSensors, BaseModel):
         self.configure()
 
     def sensor_label_to_index(self, labels):
-        indexes = []
-        for label in ensure_list(labels):
-            indexes.append(np.where([np.array(lbl) == np.array(label) for lbl in self.labels])[0][0])
-        if isinstance(labels, (list, tuple)) or len(indexes) > 1:
-            return indexes
-        else:
-            return indexes[0]
+        return self.labels2inds(self.labels, labels)
 
     def get_sensors_inds_by_sensors_labels(self, lbls):
         # Make sure that the labels are not bipolar:
@@ -188,7 +176,9 @@ class SensorsSEEG(SensorsInternal):
     sensors_type = Attr(str, default=SensorTypes.TYPE_SEEG.value, required=False)
 
 
-SensorTypesToClassesDict = {"EEG": SensorsEEG,
-                            "MEG": SensorsMEG,
-                            "SEEG": SensorsSEEG,
-                            "Internal": SensorsInternal}
+SensorsDict = {
+    Sensors.__name__: Sensors,
+    SensorsEEG.__name__: SensorsEEG,
+    SensorsMEG.__name__: SensorsMEG,
+    SensorsSEEG.__name__: SensorsSEEG,
+    SensorsInternal.__name__: SensorsInternal}

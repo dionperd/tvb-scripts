@@ -581,13 +581,13 @@ class TimeSeriesSEEG(TimeSeriesSensors, TimeSeriesSEEGTVB):
         return self.space_labels
 
 
-TimeSeriesDict = {TimeSeries.__class__.__name__: TimeSeries,
-                  TimeSeriesRegion.__class__.__name__: TimeSeriesRegion,
-                  TimeSeriesVolume.__class__.__name__: TimeSeriesVolume,
-                  TimeSeriesSurface.__class__.__name__: TimeSeriesSurface,
-                  TimeSeriesEEG.__class__.__name__: TimeSeriesEEG,
-                  TimeSeriesMEG.__class__.__name__: TimeSeriesMEG,
-                  TimeSeriesSEEG.__class__.__name__: TimeSeriesSEEG}
+TimeSeriesDict = {TimeSeries.__name__: TimeSeries,
+                  TimeSeriesRegion.__name__: TimeSeriesRegion,
+                  TimeSeriesVolume.__name__: TimeSeriesVolume,
+                  TimeSeriesSurface.__name__: TimeSeriesSurface,
+                  TimeSeriesEEG.__name__: TimeSeriesEEG,
+                  TimeSeriesMEG.__name__: TimeSeriesMEG,
+                  TimeSeriesSEEG.__name__: TimeSeriesSEEG}
 
 
 if __name__ == "__main__":

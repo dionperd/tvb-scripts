@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import glob
 import shutil
+import numpy as np
 
 
 def ensure_unique_file(parent_folder, filename):
@@ -88,5 +89,5 @@ def write_metadata(meta_dict, h5_file, key_date, key_version, path="/"):
     root = h5_file[path].attrs
     root[key_date] = str(datetime.now())
     root[key_version] = 2
-    for key, val in meta_dict.iteritems():
+    for key, val in meta_dict.items():
         root[key] = val

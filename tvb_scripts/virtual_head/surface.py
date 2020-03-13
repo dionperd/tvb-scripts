@@ -3,8 +3,15 @@
 import numpy as np
 
 from tvb_scripts.virtual_head.base import BaseModel
-from tvb.basic.neotraits.api import NArray
+from tvb.basic.neotraits.api import NArray, Attr
+from tvb.datatypes.surfaces import Surface as TVBSurface
+from tvb.datatypes.surfaces import WhiteMatterSurface as TVBWhiteMatterSurface
 from tvb.datatypes.surfaces import CorticalSurface as TVBCorticalSurface
+from tvb.datatypes.surfaces import SkinAir as TVBSkinAir
+from tvb.datatypes.surfaces import BrainSkull as TVBBrainSkull
+from tvb.datatypes.surfaces import SkullSkin as TVBSkullSkin
+from tvb.datatypes.surfaces import EEGCap as TVBEEGCap
+from tvb.datatypes.surfaces import FaceSurface as TVBFaceSurface
 
 
 class SurfaceH5Field(object):
@@ -12,20 +19,15 @@ class SurfaceH5Field(object):
     TRIANGLES = "triangles"
     VERTEX_NORMALS = "vertex_normals"
     TRIANGLE_NORMALS = "triangle_normals"
+    VOX2RAS = "vox2ras"
 
 
-class Surface(TVBCorticalSurface, BaseModel):
+class Surface(TVBSurface, BaseModel):
 
     vox2ras = NArray(
-        type=np.float,
+        dtype=np.float,
         label="vox2ras", default=None, required=False,
         doc="""Voxel to RAS coordinates transformation array.""")
-
-    @classmethod
-    def from_file(cls, filepath, **kwargs):
-        result = cls.from_tvb_instance(cls.from_file(filepath), **kwargs)
-        result.file_path = filepath
-        return result
 
     def get_vertex_normals(self):
         # If there is at least 3 vertices and 1 triangle...
@@ -68,16 +70,46 @@ class Surface(TVBCorticalSurface, BaseModel):
         return np.sum(self._find_triangle_areas())
 
 
-class CorticalSurface(Surface):
+class WhiteMatterSurface(Surface, TVBWhiteMatterSurface):
+    pass
 
-    @property
-    def surface_subtype(self):
-        return "CORTICAL"
+
+class CorticalSurface(Surface, TVBCorticalSurface):
+    pass
 
 
 class SubcorticalSurface(Surface):
+    surface_type = Attr(field_type=str, default="Cortical Surface")
 
-    @property
-    def surface_subtype(self):
-        return "SUBCORTICAL"
 
+class SkinAirSurface(Surface, TVBSkinAir):
+    pass
+
+
+class BrainSkullSurface(Surface, TVBBrainSkull):
+    pass
+
+
+class SkullSkinSurface(Surface, TVBSkullSkin):
+    pass
+
+
+class EEGCapSurface(Surface, TVBEEGCap):
+    pass
+
+
+class FaceSurfaceSurface(Surface, TVBFaceSurface):
+    pass
+
+
+SurfaceDict = {
+    Surface.__name__: Surface,
+    WhiteMatterSurface.__name__: WhiteMatterSurface,
+    CorticalSurface.__name__: CorticalSurface,
+    SubcorticalSurface.__name__: SubcorticalSurface,
+    SkinAirSurface.__name__: SkinAirSurface,
+    BrainSkullSurface.__name__: BrainSkullSurface,
+    SkullSkinSurface.__name__: SkullSkinSurface,
+    EEGCapSurface.__name__: EEGCapSurface,
+    FaceSurfaceSurface.__name__: FaceSurfaceSurface
+}

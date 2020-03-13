@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import os
 import h5py
 import numpy
 
@@ -15,6 +15,21 @@ class H5WriterBase(object):
     H5_SUBTYPE_ATTRIBUTE = "Subtype"
     H5_VERSION_ATTRIBUTE = "Version"
     H5_DATE_ATTRIBUTE = "Last_update"
+
+    def _open_file(self, name, path=None, h5_file=None):
+        if h5_file is None:
+            path = change_filename_or_overwrite(path)
+            self.logger.info("Starting to read %s from: %s" % (name, path))
+            h5_file = h5py.File(path, 'a', libver='latest')
+        return h5_file
+
+    def _close_file(self, h5_file, close_file=True):
+        if close_file:
+            h5_file.close()
+
+    def _log_success(self, name, path=None):
+        if path is not None:
+            self.logger.info("%s has been written to file: %s" % (name, path))
 
     def _determine_datasets_and_attributes(self, object, datasets_size=None):
         datasets_dict = {}
@@ -112,6 +127,21 @@ class H5WriterBase(object):
                 return group
             else:
                 return group, subgroups
+
+    def _write_dictionary_to_group(self, dictionary, group):
+        group.attrs.create(self.H5_TYPE_ATTRIBUTE, "HypothesisModel")
+        group.attrs.create(self.H5_SUBTYPE_ATTRIBUTE, dictionary.__class__.__name__)
+        for key, value in dictionary.items():
+            try:
+                if isinstance(value, numpy.ndarray) and value.size > 0:
+                    group.create_dataset(key, data=value)
+                else:
+                    if isinstance(value, list) and len(value) > 0:
+                        group.create_dataset(key, data=value)
+                    else:
+                        group.attrs.create(key, value)
+            except:
+                self.logger.warning("Did not manage to write " + key + " to h5 file " + str(group) + " !")
 
     def write_object_to_file(self, path, object, h5_type_attribute="", nr_regions=None):
         h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')

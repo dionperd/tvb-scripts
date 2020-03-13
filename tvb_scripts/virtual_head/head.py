@@ -5,9 +5,8 @@ from collections import OrderedDict
 
 from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_error, warning
 from tvb_scripts.utils.data_structures_utils import isequal_string, is_integer
-from tvb_scripts.virtual_head import SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
+from tvb_scripts.virtual_head.sensors import SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
 
-from tvb.datatypes.connectivity import Connectivity
 from tvb.datatypes.surfaces import CorticalSurface
 from tvb.datatypes.cortex import Cortex
 from tvb.datatypes.sensors import Sensors
@@ -19,11 +18,12 @@ class Head(object):
     One patient virtualization. Fully configured for defining hypothesis on it.
     """
     logger = initialize_logger(__name__)
+    folderpath = ""
 
     def __init__(self, connectivity, sensors=OrderedDict(),
                  cortical_surface=None, subcortical_surface=None,
                  cortical_region_mapping=None, subcortical_region_mapping=None,
-                 region_volume_mapping=None, t1=None, name=''):
+                 region_volume_mapping=None, t1=None, name='', folderpath=""):
         self.name = name
         self.connectivity = connectivity
         self.cortical_surface = cortical_surface
@@ -33,6 +33,7 @@ class Head(object):
         self.region_volume_mapping = region_volume_mapping
         self.t1 = t1
         self.sensors = sensors
+        self.folderpath = folderpath
 
     @property
     def number_of_regions(self):
