@@ -176,7 +176,7 @@ class TimeSeries(TimeSeriesTVB):
 
     def _process_slice(self, slice_arg, idx):
         if isinstance(slice_arg, slice):
-            return self._check_for_string_slice_indices(slice_arg, idx)
+            return self._check_for_string_or_float_slice_indices(slice_arg, idx)
         else:
             if isinstance(slice_arg, string_types):
                 return self._get_string_slice_index(slice_arg, idx)
@@ -217,15 +217,15 @@ class TimeSeries(TimeSeriesTVB):
         return self._get_index_of_label(slice_label,
                                         self.get_dimension_name(slice_idx))[0]
 
-    def _check_for_string_slice_indices(self, current_slice, slice_idx):
-        slice_label1 = current_slice.start
-        slice_label2 = current_slice.stop
+    def _check_for_string_or_float_slice_indices(self, current_slice, slice_idx):
+        slice_start = current_slice.start
+        slice_stop = current_slice.stop
 
-        if isinstance(slice_label1, string_types):
-            slice_label1 = self._get_index_for_slice_label(slice_label1, slice_idx)
-        if isinstance(slice_label2, string_types):
+        if isinstance(slice_start, string_types) or isinstance(slice_start, float):
+            slice_label1 = self._get_index_for_slice_label(slice_start, slice_idx)
+        if isinstance(slice_stop, string_types) or isinstance(slice_stop, float):
             # NOTE!: In case of a string slice, we consider stop included!
-            slice_label2 = self._get_index_for_slice_label(slice_label2, slice_idx) + 1
+            slice_label2 = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
 
         return slice(slice_label1, slice_label2, current_slice.step)
 
