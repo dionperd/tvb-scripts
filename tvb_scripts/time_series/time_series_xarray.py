@@ -363,29 +363,29 @@ class TimeSeries(HasTraits):
             return tuple(slice_list)
 
     def _get_index_for_slice_label(self, slice_label, slice_idx):
-        return np.where(self.labels_dimensions[self.labels_ordering[slice_idx]] == slice_label)[0][0]
+        return self.labels_dimensions[self.labels_ordering[slice_idx]].tolist().index(slice_label)
 
-    def _check_for_string_slice_indices(self, current_slice, slice_idx):
-        slice_label1 = current_slice.start
-        slice_label2 = current_slice.stop
+    def _check_for_string_or_float_slice_indices(self, current_slice, slice_idx):
+        slice_start = current_slice.start
+        slice_stop = current_slice.stop
 
-        if isinstance(slice_label1, string_types):
-            slice_label1 = self._get_index_for_slice_label(slice_label1, slice_idx)
-        if isinstance(slice_label2, string_types):
+        if isinstance(slice_start, string_types) or isinstance(slice_start, float):
+            slice_start = self._get_index_for_slice_label(slice_start, slice_idx)
+        if isinstance(slice_stop, string_types) or isinstance(slice_stop, float):
             # NOTE!: In case of a string slice, we consider stop included!
-            slice_label2 = self._get_index_for_slice_label(slice_label2, slice_idx) + 1
+            slice_stop = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
 
-        return slice(slice_label1, slice_label2, current_slice.step)
+        return slice(slice_start, slice_stop, current_slice.step)
 
     def _resolve_mixted_slice(self, slice_tuple):
         slice_list = []
         for idx, current_slice in enumerate(slice_tuple):
             if isinstance(current_slice, slice):
-                slice_list.append(self._check_for_string_slice_indices(current_slice, idx))
+                slice_list.append(self._check_for_string_or_float_slice_indices(current_slice, idx))
             else:
                 # If not a slice, it will be an iterable:
                 for i_slc, slc in enumerate(current_slice):
-                    if isinstance(slc, string_types):
+                    if isinstance(slc, string_types) or isinstance(slc, float):
                         current_slice[i_slc] = self.labels_dimensions[self.labels_ordering[idx]].tolist().index(slc)
                     else:
                         current_slice[i_slc] = slc
