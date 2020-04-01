@@ -222,12 +222,12 @@ class TimeSeries(TimeSeriesTVB):
         slice_stop = current_slice.stop
 
         if isinstance(slice_start, string_types) or isinstance(slice_start, float):
-            slice_label1 = self._get_index_for_slice_label(slice_start, slice_idx)
+            slice_start = self._get_index_for_slice_label(slice_start, slice_idx)
         if isinstance(slice_stop, string_types) or isinstance(slice_stop, float):
             # NOTE!: In case of a string slice, we consider stop included!
-            slice_label2 = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
+            slice_stop = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
 
-        return slice(slice_label1, slice_label2, current_slice.step)
+        return slice(slice_start, slice_stop, current_slice.step)
 
     def _get_string_slice_index(self, current_slice_string, slice_idx):
         return self._get_index_for_slice_label(current_slice_string, slice_idx)

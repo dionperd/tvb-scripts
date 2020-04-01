@@ -40,6 +40,7 @@ import xarray as xr
 import numpy as np
 from tvb.datatypes import sensors, surfaces, volumes, region_mapping, connectivity
 from tvb.basic.neotraits.api import HasTraits, Attr, NArray, List, Float, narray_summary_info
+from tvb_scripts.time_series.model import TimeSeries as TimeSeriesTVB
 from tvb_scripts.utils.data_structures_utils import is_integer
 
 
@@ -311,7 +312,7 @@ class TimeSeries(HasTraits):
             attributes.update(**kwargs)
             for attr, val in attributes.items():
                 setattr(self, attr, val)
-        elif isinstance(data, self.__class__):
+        elif isinstance(data, TimeSeriesTVB):
             self.from_TVB_time_series(data, **kwargs)
         else:
             # Assuming data is an input xr.DataArray() can handle,
@@ -481,11 +482,13 @@ class TimeSeries(HasTraits):
         new_self.configure()
         return new_self
 
-    def plot(self, time, data=None, y=None, hue=None, col=None, row=None, figname=None, plotter=None, **kwargs):
-        if figname is None:
-            figname = kwargs.pop("figname", "%s" % data.title)
+    def plot(self, time=None, data=None, y=None, hue=None, col=None, row=None, figname=None, plotter=None, **kwargs):
         if data is None:
             data = self._data
+        if time is None:
+            time = data.dims[0]
+        if figname is None:
+            figname = kwargs.pop("figname", "%s" % data.name)
         for dim_name, dim in zip(["y", "hue", "col", "row"],
                                  [y, hue, col, row]):
             if dim is not None:
@@ -516,10 +519,10 @@ class TimeSeries(HasTraits):
         else:
             y = kwargs.pop("y", labels_ordering[3])
             row = kwargs.pop("row", None)
-        kwarg["robust"] = kwargs.pop("robust", True)
-        kwarg["cmap"] = kwargs.pop("cmap", "jet")
+        kwargs["robust"] = kwargs.pop("robust", True)
+        kwargs["cmap"] = kwargs.pop("cmap", "jet")
         figname = kwargs.pop("figname", "%s" % self.title)
-        return self.plot(time, data=None, y=y, hue=None, col=col, row=row,
+        return self.plot(data=None, y=y, hue=None, col=col, row=row,
                          figname=figname, plotter=plotter, **kwargs)
 
     def plot_line(self, **kwargs):
@@ -534,7 +537,7 @@ class TimeSeries(HasTraits):
             hue = kwargs.pop("hue", labels_ordering[2])
             row = kwargs.pop("row", None)
         figname = kwargs.pop("figname", "%s" % self.title)
-        return self.plot(time, data=None, y=None, hue=hue, col=col, row=row,
+        return self.plot(data=None, y=None, hue=hue, col=col, row=row,
                          figname=figname, plotter=plotter, **kwargs)
 
     def plot_timeseries(self, **kwargs):
@@ -550,8 +553,6 @@ class TimeSeries(HasTraits):
                 kwargs["figname"] = figname
             return self.plot_line(**kwargs)
         else:
-            if plotter is not None:
-                kwargs["plotter"] = plotter
             return self.plot_raster(**kwargs)
 
     def plot_raster(self, **kwargs):
@@ -588,7 +589,7 @@ class TimeSeries(HasTraits):
         elif self.shape[2] > 1:
             hue = labels_ordering[2]
         kwargs["col_wrap"] = kwargs.pop("col_wrap", self.shape[1])  # All variables in columns
-        return self.plot(time, data=data, y=None, hue=hue, col=col, row=None,
+        return self.plot(data=data, y=None, hue=hue, col=col, row=None,
                          figname=figname, plotter=plotter, **kwargs)
 
 
