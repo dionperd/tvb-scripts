@@ -58,6 +58,8 @@ class H5Writer(H5WriterBase):
         
         self._log_success("Connectivity", path)
 
+        return h5_file
+
     def write_sensors(self, sensors, projection=None, path=None, h5_file=None, close_file=True):
         """
         :param sensors: Sensors object to write in H5
@@ -95,6 +97,8 @@ class H5Writer(H5WriterBase):
                 
             self._log_success("Sensors", path)
 
+        return h5_file
+
     def write_surface(self, surface, path=None, h5_file=None, close_file=True):
         """
         :param surface: Surface object to write in H5
@@ -120,6 +124,8 @@ class H5Writer(H5WriterBase):
 
             self._log_success("Surface", path)
 
+        return h5_file
+
     def write_region_mapping(self, region_mapping, n_regions, subtype="Cortical",
                              path=None, h5_file=None, close_file=True):
         """
@@ -140,6 +146,8 @@ class H5Writer(H5WriterBase):
             h5_file.attrs.create("Length_data", data_length)
             self._close_file(h5_file, close_file)
             self._log_success("%s RegionMapping" % subtype, path)
+
+        return h5_file
 
     def write_volume(self, volume, vol_type, n_regions,
                      path=None, h5_file=None, close_file=True):
@@ -163,15 +171,21 @@ class H5Writer(H5WriterBase):
             self._close_file(h5_file, close_file)
             self._log_success("%s VolumeMapping" % vol_type, path)
 
+        return h5_file
+
     def write_t1(self, t1, n_regions,
                  path=None, h5_file=None, close_file=True):
         if isinstance(t1, StructuralMRI):
-            self.write_volume(t1, "STRUCTURAL", n_regions, path, h5_file, close_file)
+            h5_file = self.write_volume(t1, "STRUCTURAL", n_regions, path, h5_file, close_file)
+
+        return h5_file
 
     def write_volume_mapping(self, volume_mapping, n_regions,
                              path=None, h5_file=None, close_file=True):
         if isinstance(volume_mapping, RegionVolumeMapping):
-            self.write_volume(volume_mapping, "MAPPING", n_regions, path, h5_file, close_file)
+            h5_file = self.write_volume(volume_mapping, "MAPPING", n_regions, path, h5_file, close_file)
+
+        return h5_file
 
     def write_head(self, head, path=None):
         """
@@ -214,6 +228,7 @@ class H5Writer(H5WriterBase):
         h5_file.attrs.create(self.H5_SUBTYPE_ATTRIBUTE, numpy.string_(dictionary.__class__.__name__))
         self._close_file(h5_file, close_file)
         self._log_success("Dictionary", path)
+        return h5_file
 
     def write_list_of_dictionaries(self, list_of_dicts, path=None, h5_file=None, close_file=True):
         h5_file = self._open_file("List of dictionaries", path, h5_file)
@@ -225,6 +240,7 @@ class H5Writer(H5WriterBase):
         h5_file.attrs.create(self.H5_SUBTYPE_ATTRIBUTE, numpy.string_("list"))
         self._close_file(h5_file, close_file)
         self._log_success("List of dictionaries", path)
+        return h5_file
 
     def write_ts(self, raw_data, sampling_period, path=None, h5_file=None, close_file=True):
         h5_file = self._open_file("TimeSeries", path, h5_file)
@@ -317,6 +333,7 @@ class H5Writer(H5WriterBase):
                                   "dictionary or 2D (time, nodes) numpy.ndarray of floats expected")
         self._close_file(h5_file, close_file)
         self._log_success("TimeSeries", path)
+        return h5_file
 
     def write_timeseries(self, timeseries, path=None, h5_file=None, close_file=True):
-        self.write_ts(timeseries, timeseries.sample_period, path, h5_file, close_file)
+        return self.write_ts(timeseries, timeseries.sample_period, path, h5_file, close_file)

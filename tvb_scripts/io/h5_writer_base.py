@@ -19,7 +19,7 @@ class H5WriterBase(object):
     def _open_file(self, name, path=None, h5_file=None):
         if h5_file is None:
             path = change_filename_or_overwrite(path)
-            self.logger.info("Starting to read %s from: %s" % (name, path))
+            self.logger.info("Starting to write %s to: %s" % (name, path))
             h5_file = h5py.File(path, 'a', libver='latest')
         return h5_file
 
