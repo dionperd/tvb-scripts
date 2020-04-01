@@ -311,8 +311,7 @@ class TimeSeries(HasTraits):
             attributes.update(**kwargs)
             for attr, val in attributes.items():
                 setattr(self, attr, val)
-        # TODO: Find out why this is not working
-        elif issubclass(data.__class__, TimeSeries):
+        elif isinstance(data, self.__class__):
             self.from_TVB_time_series(data, **kwargs)
         else:
             # Assuming data is an input xr.DataArray() can handle,
