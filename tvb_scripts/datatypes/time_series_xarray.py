@@ -39,8 +39,8 @@ from six import string_types
 import xarray as xr
 import numpy as np
 from tvb.datatypes import sensors, surfaces, volumes, region_mapping, connectivity
-from tvb.basic.neotraits.api import HasTraits, Attr, NArray, List, Float, narray_summary_info
-from tvb_scripts.time_series.model import TimeSeries as TimeSeriesTVB
+from tvb.basic.neotraits.api import HasTraits, Attr, List, narray_summary_info
+from tvb_scripts.datatypes.time_series import TimeSeries as TimeSeriesTVB
 from tvb_scripts.utils.data_structures_utils import is_integer
 
 

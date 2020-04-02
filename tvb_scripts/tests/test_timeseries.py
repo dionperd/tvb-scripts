@@ -1,7 +1,7 @@
 # coding=utf-8
 import numpy
 import pytest
-from tvb_scripts.time_series.model import TimeSeries, TimeSeriesDimensions, PossibleVariables
+from tvb_scripts.datatypes.time_series import TimeSeries, TimeSeriesDimensions, PossibleVariables
 
 
 class TestTimeseries(object):

@@ -5,15 +5,15 @@ from six import string_types
 import numpy
 from tvb_scripts.utils.log_error_utils import raise_value_error
 from tvb_scripts.utils.file_utils import write_metadata
-from tvb_scripts.virtual_head.connectivity import ConnectivityH5Field
-from tvb_scripts.virtual_head.sensors import SensorsH5Field, SensorTypes, Sensors
-from tvb_scripts.virtual_head.surface import SurfaceH5Field, Surface
-from tvb_scripts.virtual_head.region_mapping import RegionMapping, RegionVolumeMapping
-from tvb_scripts.virtual_head.structural import StructuralMRI
-from tvb_scripts.time_series.model import TimeSeries
-from tvb_scripts.time_series.time_series_xarray import TimeSeries as TimeSeriesXarray
+from tvb_scripts.datatypes.connectivity import ConnectivityH5Field
+from tvb_scripts.datatypes.sensors import SensorsH5Field, SensorTypes, Sensors
+from tvb_scripts.datatypes.surface import SurfaceH5Field, Surface
+from tvb_scripts.datatypes.time_series import TimeSeries
+from tvb_scripts.datatypes.time_series_xarray import TimeSeries as TimeSeriesXarray
 from tvb_scripts.io.h5_writer_base import H5WriterBase
 
+from tvb.datatypes.region_mapping import RegionMapping, RegionVolumeMapping
+from tvb.datatypes.structural import StructuralMRI
 from tvb.datatypes.projections import ProjectionMatrix
 
 
@@ -190,7 +190,7 @@ class H5Writer(H5WriterBase):
     def write_head(self, head, path=None):
         """
         :param head: Head object to be written
-        :param path: path to virtual_head folder
+        :param path: path to datatypes folder
         """
         if path is None:
             path = head.folderpath

@@ -1,7 +1,6 @@
 # coding=utf-8
-import numpy as np
-from tvb_scripts.utils.data_structures_utils import labels_to_inds
-from tvb_scripts.virtual_head.base import BaseModel
+
+from tvb_scripts.datatypes.base import BaseModel
 from tvb.datatypes.connectivity import Connectivity as TVBConnectivity
 
 

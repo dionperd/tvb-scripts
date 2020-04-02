@@ -27,9 +27,9 @@ setuptools.setup(name='tvb-scripts',
                  description='A package with helper functions, '
                              'some additional datatypes, '
                              'plotting functions, '
-                             'a Timeseries model and service, '
+                             'a TimeSeries model and service, '
                              'io module to and from TVB and h5 files'
-                             'and a virtual_head model and services for TVB Structural data, '
+                             'and a datatypes model and services for TVB Structural data, '
                              'for more efficient TVB scripting.',
                  license="GPL v3",
                  author="TVB Team",

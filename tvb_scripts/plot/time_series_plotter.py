@@ -7,10 +7,10 @@ from matplotlib.colors import Normalize
 import numpy
 from tvb_scripts.utils.log_error_utils import warning, raise_value_error
 from tvb_scripts.utils.data_structures_utils import ensure_list, isequal_string, generate_region_labels, ensure_string
-from tvb_scripts.utils.analyzers_utils import time_spectral_analysis
+from tvb_scripts.utils.time_series_utils import time_spectral_analysis
 from tvb_scripts.plot.base_plotter import BasePlotter
 from tvb.datatypes.time_series import TimeSeries as TimeSeriesTVB
-from tvb_scripts.time_series.model import TimeSeries
+from tvb_scripts.datatypes.time_series import TimeSeries
 
 
 def assert_time(time, n_times, time_unit="ms", logger=None):

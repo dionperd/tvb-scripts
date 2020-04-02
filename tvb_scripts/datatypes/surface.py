@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from tvb_scripts.virtual_head.base import BaseModel
+from tvb_scripts.datatypes.base import BaseModel
 from tvb.basic.neotraits.api import NArray, Attr
 from tvb.datatypes.surfaces import Surface as TVBSurface
 from tvb.datatypes.surfaces import WhiteMatterSurface as TVBWhiteMatterSurface

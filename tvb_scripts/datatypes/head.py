@@ -5,7 +5,8 @@ from collections import OrderedDict
 
 from tvb_scripts.utils.log_error_utils import initialize_logger, raise_value_error, warning
 from tvb_scripts.utils.data_structures_utils import isequal_string, is_integer
-from tvb_scripts.virtual_head.sensors import SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
+from tvb_scripts.datatypes.connectivity import Connectivity
+from tvb_scripts.datatypes.sensors import SensorTypes, SensorTypesNames, SensorTypesToProjectionDict
 
 from tvb.datatypes.surfaces import CorticalSurface
 from tvb.datatypes.cortex import Cortex

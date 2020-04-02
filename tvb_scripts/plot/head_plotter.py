@@ -5,7 +5,7 @@ from matplotlib import pyplot
 import numpy
 
 from tvb_scripts.utils.computations_utils import compute_in_degree
-from tvb_scripts.virtual_head.sensors import Sensors
+from tvb_scripts.datatypes.sensors import Sensors
 from tvb_scripts.plot.base_plotter import BasePlotter
 
 from tvb.datatypes.projections import ProjectionMatrix

@@ -6,12 +6,6 @@ from tvb.basic.neotraits.api import HasTraits, Attr
 
 class BaseModel(HasTraits):
 
-    filepath = Attr(
-        field_type=str,
-        label="File path",
-        default='', required=False,
-        doc="Absolute path to the object's location in the file system")
-
     def set_attributes(self, **kwargs):
         for attr, value in kwargs.items():
             try:

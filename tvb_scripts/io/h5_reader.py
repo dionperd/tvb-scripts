@@ -1,24 +1,29 @@
 # -*- coding: utf-8 -*-
 
-import os
-import h5py
 from collections import OrderedDict
 
 import numpy as np
 
 from tvb_scripts.io.h5_reader_base import *
-from tvb_scripts.virtual_head.connectivity import Connectivity, ConnectivityH5Field
-from tvb_scripts.virtual_head.head import Head
-from tvb_scripts.virtual_head.sensors import \
+from tvb_scripts.datatypes.connectivity import Connectivity, ConnectivityH5Field
+from tvb_scripts.datatypes.head import Head
+from tvb_scripts.datatypes.sensors import \
     Sensors, SensorsDict, SensorsH5Field, SensorTypesToProjectionDict
-from tvb_scripts.virtual_head.surface import Surface, SurfaceDict, SurfaceH5Field
-from tvb_scripts.virtual_head.region_mapping import RegionMappingDict
-from tvb_scripts.virtual_head.structural import StructuralMRI
-from tvb_scripts.time_series.model import LABELS_ORDERING, TimeSeriesDict, TimeSeries
-from tvb_scripts.time_series.time_series_xarray import TimeSeries as XarrayTimeSeries
-from tvb_scripts.time_series.time_series_xarray import TimeSeriesDict as XarrayTimeSeriesDict
+from tvb_scripts.datatypes.surface import Surface, SurfaceDict, SurfaceH5Field
 
+from tvb_scripts.datatypes.time_series import TimeSeriesDict, TimeSeries
+from tvb_scripts.datatypes.time_series_xarray import TimeSeries as XarrayTimeSeries
+from tvb_scripts.datatypes.time_series_xarray import TimeSeriesDict as XarrayTimeSeriesDict
+
+from tvb.datatypes.region_mapping import RegionMapping, RegionVolumeMapping
+from tvb.datatypes.structural import StructuralMRI
 from tvb.datatypes.projections import ProjectionMatrix
+
+
+RegionMappingDict = {
+    RegionMapping.__name__: RegionMapping,
+    RegionVolumeMapping.__name__: RegionVolumeMapping,
+}
 
 
 class H5Reader(H5ReaderBase):
@@ -117,7 +122,7 @@ class H5Reader(H5ReaderBase):
 
     def read_sensors(self, path=None):
         """
-        :param path: Path towards a custom virtual_head folder
+        :param path: Path towards a custom datatypes folder
         :return: 3 lists with all sensors from Path by type
         """
         sensors = OrderedDict()
@@ -244,7 +249,7 @@ class H5Reader(H5ReaderBase):
 
     def read_head(self, path, atlas="default"):
         """
-        :param path: Path towards a custom virtual_head folder
+        :param path: Path towards a custom datatypes folder
         :return: Head object
         """
         self.logger.info("Starting to read Head from: %s" % path)

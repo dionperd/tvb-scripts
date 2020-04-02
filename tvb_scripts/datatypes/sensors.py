@@ -6,7 +6,8 @@ import numpy as np
 from tvb_scripts.utils.log_error_utils import warning
 from tvb_scripts.utils.data_structures_utils import ensure_list, \
     labels_to_inds, monopolar_to_bipolar, split_string_text_numbers
-from tvb_scripts.virtual_head.base import BaseModel
+from tvb_scripts.datatypes.base import BaseModel
+
 from tvb.basic.neotraits.api import Attr, NArray
 from tvb.datatypes.sensors import Sensors as TVBSensors
 from tvb.datatypes.sensors import SensorsEEG as TVBSensorsEEG

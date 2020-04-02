@@ -2,100 +2,17 @@
 from copy import deepcopy
 from six import string_types
 from collections import OrderedDict
-from itertools import cycle
 
 import numpy as np
-from scipy.signal import decimate, convolve, detrend, hilbert
-from scipy.stats import zscore
-from pylab import demean
+from scipy.signal import convolve, detrend, hilbert
 
 from tvb_scripts.utils.log_error_utils import raise_value_error, initialize_logger
-from tvb_scripts.utils.data_structures_utils import isequal_string, ensure_list
+from tvb_scripts.utils.data_structures_utils import ensure_list
 from tvb_scripts.utils.computations_utils import select_greater_values_array_inds, \
     select_by_hierarchical_group_metric_clustering
-from tvb_scripts.utils.analyzers_utils import abs_envelope, spectrogram_envelope, filter_data
-from tvb_scripts.time_series.model import TimeSeriesSEEG, LABELS_ORDERING
-
-
-def decimate_signals(signals, time, decim_ratio):
-    if decim_ratio > 1:
-        signals = decimate(signals, decim_ratio, axis=0, zero_phase=True, ftype="fir")
-        time = decimate(time, decim_ratio, zero_phase=True, ftype="fir")
-        dt = np.mean(np.diff(time))
-        (n_times, n_signals) = signals.shape
-        return signals, time, dt, n_times
-
-
-def cut_signals_tails(signals, time, cut_tails):
-    signals = signals[cut_tails[0]:-cut_tails[-1]]
-    time = time[cut_tails[0]:-cut_tails[-1]]
-    (n_times, n_signals) = signals.shape
-    return signals, time, n_times
-
-
-NORMALIZATION_METHODS = ["zscore", "mean", "min", "max", "baseline", "baseline-amplitude", "baseline-std", "minmax"]
-
-
-# TODO: Add a service to convert to 2D Time Series TVB instances
-
-
-def normalize_signals(signals, normalization=None, axis=None, percent=None):
-    # Following pylab demean:
-
-    def matrix_subtract_along_axis(x, y, axis=0):
-        "Return x minus y, where y corresponds to some statistic of x along the specified axis"
-        if axis == 0 or axis is None or x.ndim <= 1:
-            return x - y
-        ind = [slice(None)] * x.ndim
-        ind[axis] = np.newaxis
-        return x - y[ind]
-
-    def matrix_divide_along_axis(x, y, axis=0):
-        "Return x divided by y, where y corresponds to some statistic of x along the specified axis"
-        if axis == 0 or axis is None or x.ndim <= 1:
-            return x / y
-        ind = [slice(None)] * x.ndim
-        ind[axis] = np.newaxis
-        return x / y[ind]
-
-    for norm, ax, prcnd in zip(ensure_list(normalization), cycle(ensure_list(axis)), cycle(ensure_list(percent))):
-        if isinstance(norm, string_types):
-            if isequal_string(norm, "zscore"):
-                signals = zscore(signals, axis=ax)  # / 3.0
-            elif isequal_string(norm, "baseline-std"):
-                signals = normalize_signals(["baseline", "std"], axis=axis)
-            elif norm.find("baseline") == 0 and norm.find("amplitude") >= 0:
-                signals = normalize_signals(signals, ["baseline", norm.split("-")[1]], axis=axis, percent=percent)
-            elif isequal_string(norm, "minmax"):
-                signals = normalize_signals(signals, ["min", "max"], axis=axis)
-            elif isequal_string(norm, "mean"):
-                signals = demean(signals, axis=ax)
-            elif isequal_string(norm, "baseline"):
-                if prcnd is None:
-                    prcnd = 1
-                signals = matrix_subtract_along_axis(signals, np.percentile(signals, prcnd, axis=ax), axis=ax)
-            elif isequal_string(norm, "min"):
-                signals = matrix_subtract_along_axis(signals, np.min(signals, axis=ax), axis=ax)
-            elif isequal_string(norm, "max"):
-                signals = matrix_divide_along_axis(signals, np.max(signals, axis=ax), axis=ax)
-            elif isequal_string(norm, "std"):
-                signals = matrix_divide_along_axis(signals, signals.std(axis=ax), axis=ax)
-            elif norm.find("amplitude") >= 0:
-                if prcnd is None:
-                    prcnd = [1, 99]
-                amplitude = np.percentile(signals, prcnd[1], axis=ax) - np.percentile(signals, prcnd[0], axis=ax)
-                this_ax = ax
-                if isequal_string(norm.split("amplitude")[0], "max"):
-                    amplitude = amplitude.max()
-                    this_ax = None
-                elif isequal_string(norm.split("amplitude")[0], "mean"):
-                    amplitude = amplitude.mean()
-                    this_ax = None
-                signals = matrix_divide_along_axis(signals, amplitude, axis=this_ax)
-            else:
-                raise_value_error("Ignoring signals' normalization " + normalization +
-                                  ",\nwhich is not one of the currently available " + str(NORMALIZATION_METHODS) + "!")
-    return signals
+from tvb_scripts.utils.time_series_utils import abs_envelope, spectrogram_envelope, filter_data, decimate_signals, \
+    normalize_signals
+from tvb_scripts.datatypes.time_series import TimeSeriesSEEG, LABELS_ORDERING
 
 
 class TimeSeriesService(object):
