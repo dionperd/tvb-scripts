@@ -200,6 +200,24 @@ class TimeSeries(HasTraits):
     def flattened(self):
         return self.data.flatten()
 
+    def __setattr__(self, name, value):
+        if name == "data":
+            setattr(self._data, "values", value)
+        elif name == "labels_ordering":
+            setattr(self._data, "dims", value)
+        elif name == "labels_dimensions":
+            setattr(self._data, "coords", value)
+        elif name == "time":
+            self._data.coords[self._data.dims[0]] = value
+        elif name == "start_time":
+            self._data.coords[self._data.dims[0]][0] = value
+        elif name == "sample_period":
+            self._data.attrs["sample_period"] = value
+        elif name == "sample_period_unit":
+            self._data.attrs["sample_period_unit"] = value
+        else:
+            super(TimeSeries, self).__setattr__(name, value)
+
     def _configure_input_time(self, data, **kwargs):
         # Method to initialise time attributes
         # It gives priority to an input time vector, if any.
