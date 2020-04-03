@@ -36,7 +36,7 @@ class H5Writer(H5WriterBase):
         :param connectivity: Connectivity object to be written in H5
         :param path: H5 path to be written
         """
-        h5_file = self._open_file("Connectivity", path, h5_file)
+        h5_file, path = self._open_file("Connectivity", path, h5_file)
 
         h5_file.create_dataset(ConnectivityH5Field.WEIGHTS, data=connectivity.weights)
         h5_file.create_dataset(ConnectivityH5Field.TRACTS, data=connectivity.tract_lengths)
@@ -66,7 +66,7 @@ class H5Writer(H5WriterBase):
         :param path: H5 path to be written
         """
         if isinstance(sensors, Sensors):
-            h5_file = self._open_file("Sensors", path, h5_file)
+            h5_file, path = self._open_file("Sensors", path, h5_file)
 
             h5_file.create_dataset(SensorsH5Field.LABELS,
                                    data=numpy.array([numpy.string_(label) for label in sensors.labels]))
@@ -105,7 +105,7 @@ class H5Writer(H5WriterBase):
         :param path: H5 path to be written
         """
         if isinstance(surface, Surface):
-            h5_file = self._open_file("Surface", path, h5_file)
+            h5_file, path = self._open_file("Surface", path, h5_file)
 
             h5_file.create_dataset(SurfaceH5Field.VERTICES, data=surface.vertices)
             h5_file.create_dataset(SurfaceH5Field.TRIANGLES, data=surface.triangles)
@@ -133,7 +133,7 @@ class H5Writer(H5WriterBase):
             :param path: H5 path to be written
         """
         if isinstance(region_mapping, RegionMapping):
-            h5_file = self._open_file("%s RegionMapping" % subtype, path, h5_file)
+            h5_file, path = self._open_file("%s RegionMapping" % subtype, path, h5_file)
 
             h5_file.create_dataset("data", data=region_mapping.array_data)
 
@@ -159,7 +159,7 @@ class H5Writer(H5WriterBase):
             shape = volume.array_data.shape
             if len(shape) < 3:
                 shape = (0, 0, 0)
-            h5_file = self._open_file("%s VolumeMapping" % vol_type, path, h5_file)
+            h5_file, path = self._open_file("%s VolumeMapping" % vol_type, path, h5_file)
             h5_file.create_dataset("data", data=volume.array_data)
             h5_file.attrs.create("Connectivity_parcel", numpy.string_("Connectivity-%d" % n_regions))
             h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, numpy.string_("VolumeData"))
@@ -222,7 +222,7 @@ class H5Writer(H5WriterBase):
         :param dictionary: dictionary to write in H5
         :param path: H5 path to be written
         """
-        h5_file = self._open_file("Dictionary", path, h5_file)
+        h5_file, path = self._open_file("Dictionary", path, h5_file)
         self._write_dictionary_to_group(dictionary, h5_file)
         h5_file.attrs.create(self.H5_TYPE_ATTRIBUTE, numpy.string_("Dictionary"))
         h5_file.attrs.create(self.H5_SUBTYPE_ATTRIBUTE, numpy.string_(dictionary.__class__.__name__))
@@ -231,7 +231,7 @@ class H5Writer(H5WriterBase):
         return h5_file
 
     def write_list_of_dictionaries(self, list_of_dicts, path=None, h5_file=None, close_file=True):
-        h5_file = self._open_file("List of dictionaries", path, h5_file)
+        h5_file, path = self._open_file("List of dictionaries", path, h5_file)
         for idict, dictionary in enumerate(list_of_dicts):
             idict_str = str(idict)
             h5_file.create_group(idict_str)
@@ -243,7 +243,7 @@ class H5Writer(H5WriterBase):
         return h5_file
 
     def write_ts(self, raw_data, sampling_period, path=None, h5_file=None, close_file=True):
-        h5_file = self._open_file("TimeSeries", path, h5_file)
+        h5_file, path = self._open_file("TimeSeries", path, h5_file)
         write_metadata({self.H5_TYPE_ATTRIBUTE: "TimeSeries"}, h5_file,
                        self.H5_DATE_ATTRIBUTE, self.H5_VERSION_ATTRIBUTE)
         if isinstance(raw_data, (TimeSeries, TimeSeriesXarray)):

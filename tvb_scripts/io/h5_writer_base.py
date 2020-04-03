@@ -21,7 +21,7 @@ class H5WriterBase(object):
             path = change_filename_or_overwrite(path)
             self.logger.info("Starting to write %s to: %s" % (name, path))
             h5_file = h5py.File(path, 'a', libver='latest')
-        return h5_file
+        return h5_file, path
 
     def _close_file(self, h5_file, close_file=True):
         if close_file:
