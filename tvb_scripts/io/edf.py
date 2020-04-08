@@ -4,7 +4,7 @@ import numpy as np
 
 from tvb_scripts.utils.log_error_utils import initialize_logger
 from tvb_scripts.utils.data_structures_utils import ensure_string
-from tvb_scripts.model.timeseries import Timeseries, TimeseriesDimensions
+from tvb_scripts.datatypes.time_series import TimeSeries, TimeSeriesDimensions
 
 
 def read_edf_with_mne(path, exclude_channels):
@@ -79,5 +79,5 @@ def read_edf_to_Timeseries(path, sensors, rois_selection=None, label_strip_fun=N
     data, times, rois, rois_inds, rois_lbls = \
         read_edf(path, sensors, rois_selection, label_strip_fun, time_unit)
 
-    return Timeseries(data, time=times, labels_dimensions={TimeseriesDimensions.SPACE.value: rois_lbls},
+    return TimeSeries(data, time=times, labels_dimensions={TimeSeriesDimensions.SPACE.value: rois_lbls},
                       sample_period=np.mean(np.diff(times)), sample_period_unit=time_unit, **kwargs)
