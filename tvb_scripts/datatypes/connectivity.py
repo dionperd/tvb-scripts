@@ -30,4 +30,7 @@ class Connectivity(TVBConnectivity, BaseModel):
 
     # A usefull method for addressing subsets of the connectome by label:
     def get_regions_inds_by_labels(self, labels):
-        return  self.labels2inds(self.region_labels, labels)
+        return self.labels2inds(self.region_labels, labels)
+
+    def to_tvb_instance(self, **kwargs):
+        return super(Connectivity, self).to_tvb_instance(TVBConnectivity, **kwargs)

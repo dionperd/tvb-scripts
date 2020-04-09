@@ -15,8 +15,6 @@ from tvb.datatypes.sensors import SensorsMEG as TVBSensorsMEG
 from tvb.datatypes.sensors import SensorsInternal as TVBSensorsInternal
 from tvb.datatypes.sensors import EEG_POLYMORPHIC_IDENTITY, MEG_POLYMORPHIC_IDENTITY, \
     INTERNAL_POLYMORPHIC_IDENTITY
-from tvb.datatypes.projections import \
-    ProjectionSurfaceEEG, ProjectionSurfaceMEG, ProjectionSurfaceSEEG
 
 
 class SensorTypes(Enum):
@@ -24,22 +22,6 @@ class SensorTypes(Enum):
     TYPE_MEG = MEG_POLYMORPHIC_IDENTITY
     TYPE_INTERNAL = INTERNAL_POLYMORPHIC_IDENTITY
     TYPE_SEEG = "SEEG"
-
-
-SensorTypesNames = [getattr(SensorTypes, stype).value for stype in SensorTypes.__members__]
-
-
-SensorTypesToProjectionDict = {"EEG": ProjectionSurfaceEEG,
-                               "MEG": ProjectionSurfaceMEG,
-                               "SEEG": ProjectionSurfaceSEEG,
-                               "Internal": ProjectionSurfaceSEEG}
-
-
-class SensorsH5Field(object):
-    PROJECTION_MATRIX = "projection_matrix"
-    LABELS = "labels"
-    LOCATIONS = "locations"
-    ORIENTATIONS = "orientations"
 
 
 class Sensors(TVBSensors, BaseModel):
@@ -53,7 +35,7 @@ class Sensors(TVBSensors, BaseModel):
         if len(self.labels) > 0:
                 if remove_leading_zeros_from_labels:
                     self.remove_leading_zeros_from_labels()
-        self.configure()
+        super(Sensors, self).configure()
 
     def sensor_label_to_index(self, labels):
         return self.labels2inds(self.labels, labels)
@@ -84,13 +66,20 @@ class Sensors(TVBSensors, BaseModel):
             sensors_inds = range(self.number_of_sensors)
         return monopolar_to_bipolar(self.labels, sensors_inds)
 
+    def to_tvb_instance(self, datatype=TVBSensors, **kwargs):
+        return super(Sensors, self).to_tvb_instance(datatype, **kwargs)
+
 
 class SensorsEEG(Sensors, TVBSensorsEEG):
-   pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(SensorsEEG, self).to_tvb_instance(TVBSensorsEEG, **kwargs)
 
 
 class SensorsMEG(Sensors, TVBSensorsMEG):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(SensorsMEG, self).to_tvb_instance(TVBSensorsMEG, **kwargs)
 
 
 class SensorsInternal(Sensors, TVBSensorsInternal):
@@ -121,7 +110,7 @@ class SensorsInternal(Sensors, TVBSensorsInternal):
 
     def configure(self):
         super(SensorsInternal, self).configure()
-        if self._tvb.number_of_sensors > 0:
+        if self.number_of_sensors > 0:
             self.elec_labels, self.elec_inds = self.group_sensors_to_electrodes()
         else:
             self.elec_labels = None
@@ -172,14 +161,13 @@ class SensorsInternal(Sensors, TVBSensorsInternal):
             bipolar_sensors_inds, bipolar_sensors_lbls = self.get_bipolar_elecs(elecs_inds)
         return bipolar_sensors_inds, bipolar_sensors_lbls
 
+    def to_tvb_instance(self, **kwargs):
+        return super(SensorsInternal, self).to_tvb_instance(TVBSensorsInternal, **kwargs)
+
 
 class SensorsSEEG(SensorsInternal):
+
     sensors_type = Attr(str, default=SensorTypes.TYPE_SEEG.value, required=False)
 
-
-SensorsDict = {
-    Sensors.__name__: Sensors,
-    SensorsEEG.__name__: SensorsEEG,
-    SensorsMEG.__name__: SensorsMEG,
-    SensorsSEEG.__name__: SensorsSEEG,
-    SensorsInternal.__name__: SensorsInternal}
+    def to_tvb_instance(self, **kwargs):
+        return super(SensorsSEEG, self).to_tvb_instance(TVBSensorsInternal, **kwargs)

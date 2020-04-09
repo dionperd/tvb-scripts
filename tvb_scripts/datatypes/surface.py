@@ -26,7 +26,7 @@ class Surface(TVBSurface, BaseModel):
 
     vox2ras = NArray(
         dtype=np.float,
-        label="vox2ras", default=None, required=False,
+        label="vox2ras", default=np.array([]), required=False,
         doc="""Voxel to RAS coordinates transformation array.""")
 
     def get_vertex_normals(self):
@@ -69,47 +69,62 @@ class Surface(TVBSurface, BaseModel):
             """
         return np.sum(self._find_triangle_areas())
 
+    def configure(self):
+        try:
+            self.zero_based_triangles
+        except:
+            self.zero_based_triangles = False
+        super(Surface, self).configure()
+
+    def to_tvb_instance(self, datatype=TVBSurface, **kwargs):
+        return super(Surface, self).to_tvb_instance(datatype, **kwargs)
+
 
 class WhiteMatterSurface(Surface, TVBWhiteMatterSurface):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(WhiteMatterSurface, self).to_tvb_instance(TVBWhiteMatterSurface, **kwargs)
 
 
 class CorticalSurface(Surface, TVBCorticalSurface):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(CorticalSurface, self).to_tvb_instance(TVBCorticalSurface, **kwargs)
 
 
 class SubcorticalSurface(Surface):
-    surface_type = Attr(field_type=str, default="Cortical Surface")
+
+    surface_type = Attr(field_type=str, default="Subcortical Surface")
+
+    def to_tvb_instance(self, **kwargs):
+        return super(SubcorticalSurface, self).to_tvb_instance(TVBCorticalSurface, **kwargs)
 
 
 class SkinAirSurface(Surface, TVBSkinAir):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(SkinAirSurface, self).to_tvb_instance(TVBSkinAir, **kwargs)
 
 
 class BrainSkullSurface(Surface, TVBBrainSkull):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(BrainSkullSurface, self).to_tvb_instance(TVBBrainSkull, **kwargs)
 
 
 class SkullSkinSurface(Surface, TVBSkullSkin):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(SkullSkinSurface, self).to_tvb_instance(TVBSkullSkin, **kwargs)
 
 
 class EEGCapSurface(Surface, TVBEEGCap):
-    pass
+
+    def to_tvb_instance(self, **kwargs):
+        return super(EEGCapSurface, self).to_tvb_instance(TVBEEGCap, **kwargs)
 
 
 class FaceSurfaceSurface(Surface, TVBFaceSurface):
-    pass
 
-
-SurfaceDict = {
-    Surface.__name__: Surface,
-    WhiteMatterSurface.__name__: WhiteMatterSurface,
-    CorticalSurface.__name__: CorticalSurface,
-    SubcorticalSurface.__name__: SubcorticalSurface,
-    SkinAirSurface.__name__: SkinAirSurface,
-    BrainSkullSurface.__name__: BrainSkullSurface,
-    SkullSkinSurface.__name__: SkullSkinSurface,
-    EEGCapSurface.__name__: EEGCapSurface,
-    FaceSurfaceSurface.__name__: FaceSurfaceSurface
-}
+    def to_tvb_instance(self, **kwargs):
+        return super(FaceSurfaceSurface, self).to_tvb_instance(TVBFaceSurface, **kwargs)

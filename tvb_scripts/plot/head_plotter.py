@@ -5,10 +5,10 @@ from matplotlib import pyplot
 import numpy
 
 from tvb_scripts.utils.computations_utils import compute_in_degree
-from tvb_scripts.datatypes.sensors import Sensors
 from tvb_scripts.plot.base_plotter import BasePlotter
 
-from tvb.datatypes.projections import ProjectionMatrix
+from tvb.datatypes.sensors import Sensors as TVBSensors
+from tvb.datatypes.projections import ProjectionMatrix as TVBProjectionMatrix
 
 
 class HeadPlotter(BasePlotter):
@@ -19,8 +19,8 @@ class HeadPlotter(BasePlotter):
     def _plot_connectivity(self, connectivity, figure_name='Connectivity'):
         pyplot.figure(figure_name + str(connectivity.number_of_regions), self.config.figures.VERY_LARGE_SIZE)
         axes = []
-        axes.append(self.plot_regions2regions(connectivity.normalized_weights,
-                                              connectivity.region_labels, 121, "normalised weights"))
+        axes.append(self.plot_regions2regions(connectivity.weights,
+                                              connectivity.region_labels, 121, "weights"))
         axes.append(self.plot_regions2regions(connectivity.tract_lengths,
                                               connectivity.region_labels, 122, "tract lengths"))
         self._save_figure(None, figure_name.replace(" ", "_").replace("\t", "_"))
@@ -33,7 +33,7 @@ class HeadPlotter(BasePlotter):
         pyplot.figure("Head stats " + str(connectivity.number_of_regions), figsize=figsize)
         areas_flag = len(connectivity.areas) == len(connectivity.region_labels)
         axes=[]
-        axes.append(self.plot_vector(compute_in_degree(connectivity.normalized_weights), connectivity.region_labels,
+        axes.append(self.plot_vector(compute_in_degree(connectivity.weights), connectivity.region_labels,
                               111 + 10 * areas_flag, "w in-degree"))
         if len(connectivity.areas) == len(connectivity.region_labels):
             axes.append(self.plot_vector(connectivity.areas, connectivity.region_labels, 122, "region areas"))
@@ -41,11 +41,10 @@ class HeadPlotter(BasePlotter):
         self._check_show()
         return pyplot.gcf(), tuple(axes)
 
-    def _plot_sensors(self, sensors, projection, region_labels, count=1):
+    def _plot_sensors(self, sensors, projection, region_labels):
         figure, ax, cax = self._plot_projection(sensors, projection, region_labels,
-                                                title="%d - %s - Projection" % (count, sensors.sensors_type))
-        count += 1
-        return count, figure, ax, cax
+                                                title="%s - Projection" % (sensors.sensors_type))
+        return figure, ax, cax
 
     def _plot_projection(self, sensors, projection, region_labels, figure=None, title="Projection",
                          show_x_labels=True, show_y_labels=True, x_ticks=numpy.array([]), y_ticks=numpy.array([]),
@@ -60,20 +59,20 @@ class HeadPlotter(BasePlotter):
         self._check_show()
         return figure, ax, cax1
 
-    def plot_head(self, head, plot_stats=False, plot_sensors=True):
+    def plot_head(self, head, plot_stats=False, plot_sensors=True):  #
         output = []
         output.append(self._plot_connectivity(head.connectivity))
         if plot_stats:
             output.append(self._plot_connectivity_stats(head.connectivity))
         if plot_sensors:
-            count = 1
-            for s_type, sensors_set in head.sensors.items():
-                for sensor, projection in sensors_set.items():
-                    if isinstance(sensor, Sensors) and isinstance(projection, ProjectionMatrix):
-                        count, figure, ax, cax = \
-                            self._plot_sensors(sensor, projection.projection_data,
-                                               head.connectivity.region_labels, count)
-                        output.append((figure, ax, cax))
+            for s_type in ["eeg", "seeg", "meg"]:
+                sensors = getattr(head, "%s_sensors" % s_type)
+                projection = getattr(head, "%s_projection" % s_type)
+                if issubclass(sensors.__class__, TVBSensors) and issubclass(projection.__class__, TVBProjectionMatrix):
+                    figure, ax, cax = \
+                        self._plot_sensors(sensors, projection.projection_data,
+                                           head.connectivity.region_labels)
+                    output.append((figure, ax, cax))
         return tuple(output)
 
     def plot_tvb_connectivity(self, connectivity, num="weights", order_by=None, plot_hinton=False, plot_tracts=True,

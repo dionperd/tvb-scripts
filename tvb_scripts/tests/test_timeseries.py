@@ -200,3 +200,5 @@ class TestTimeseries(object):
                            sample_period_unit=self.sample_period_unit)
         assert ts_4D.data.shape == (3, 4, 3, 4)
         assert ts_4D.x1.data.shape == (3, 4, 1, 4)
+
+

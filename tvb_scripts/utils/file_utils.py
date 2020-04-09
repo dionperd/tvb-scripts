@@ -37,6 +37,12 @@ def change_filename_or_overwrite(path, overwrite=True):
     return path
 
 
+def insensitive_glob(pattern):
+    def either(c):
+        return '[%s%s]' % (c.lower(), c.upper()) if c.isalpha() else c
+    return glob.glob(''.join(map(either, pattern)))
+
+
 def wildcardit(name, front=True, back=True):
     out = str(name)
     if front:
@@ -49,6 +55,19 @@ def wildcardit(name, front=True, back=True):
 def ensure_folder(folderpath):
     if not os.path.isdir(folderpath):
         os.makedirs(folderpath)
+
+
+def delete_all_files_in_folder(folderpath):
+    if os.path.isdir(folderpath):
+        for filename in os.listdir(folderpath):
+            file_path = os.path.join(folderpath, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
 def change_filename_or_overwrite_with_wildcard(path, overwrite=True):

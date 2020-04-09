@@ -1,24 +1,30 @@
 # -*- coding: utf-8 -*-
 
+import os
 import h5py
 import numpy
 
+from tvb_scripts.config import CONFIGURED
 from tvb_scripts.utils.log_error_utils import initialize_logger, warning
 from tvb_scripts.utils.data_structures_utils import is_numeric
 from tvb_scripts.utils.file_utils import change_filename_or_overwrite
+from tvb_scripts.io.datatypes_h5 import REGISTRY
+
+from tvb.core.neocom import h5
 
 
 class H5Writer(object):
     logger = initialize_logger(__name__)
-
+    config = CONFIGURED
     H5_TYPE_ATTRIBUTE = "Type"
     H5_SUBTYPE_ATTRIBUTE = "Subtype"
     H5_VERSION_ATTRIBUTE = "Version"
     H5_DATE_ATTRIBUTE = "Last_update"
+    force_overwrite = True
 
     def _open_file(self, name, path=None, h5_file=None):
         if h5_file is None:
-            path = change_filename_or_overwrite(path)
+            path = change_filename_or_overwrite(path, self.force_overwrite)
             self.logger.info("Starting to write %s to: %s" % (name, path))
             h5_file = h5py.File(path, 'a', libver='latest')
         return h5_file, path
@@ -143,10 +149,12 @@ class H5Writer(object):
             except:
                 self.logger.warning("Did not manage to write " + key + " to h5 file " + str(group) + " !")
 
-    def write_object_to_file(self, path, object, h5_type_attribute="", nr_regions=None):
-        h5_file = h5py.File(change_filename_or_overwrite(path), 'a', libver='latest')
+    def write_object_to_file(self, path, object, h5_type_attribute="", nr_regions=None, h5_file=None, close_file=True):
+        h5_file, path = self._open_file("Dictionary", path, h5_file)
         h5_file = self._prepare_object_for_group(h5_file, object, h5_type_attribute, nr_regions)
-        h5_file.close()
+        self._close_file(h5_file, close_file)
+        self._log_success(object.__class__.__name__, path)
+        return h5_file, path
 
     def write_dictionary(self, dictionary, path, h5_file=None, close_file=True):
         """
@@ -159,7 +167,7 @@ class H5Writer(object):
         h5_file.attrs.create(self.H5_SUBTYPE_ATTRIBUTE, numpy.string_(dictionary.__class__.__name__))
         self._close_file(h5_file, close_file)
         self._log_success("Dictionary", path)
-        return h5_file
+        return h5_file, path
 
     def write_list_of_dictionaries(self, list_of_dicts, path=None, h5_file=None, close_file=True):
         h5_file, path = self._open_file("List of dictionaries", path, h5_file)
@@ -171,4 +179,30 @@ class H5Writer(object):
         h5_file.attrs.create(self.H5_SUBTYPE_ATTRIBUTE, numpy.string_("list"))
         self._close_file(h5_file, close_file)
         self._log_success("List of dictionaries", path)
-        return h5_file
+        return h5_file, path
+
+    def write_tvb_to_h5(self, datatype, path=None, recursive=True):
+        if path is None:
+            path = self.config.out.FOLDER_RES
+        if path.endswith("h5"):
+            # It is a file path:
+            dirpath = os.path.dirname(path)
+            if os.path.isdir(dirpath):
+                path = change_filename_or_overwrite(path)
+            else:
+                os.mkdir(dirpath)
+            h5.store(datatype, path, recursive)
+        else:
+            if not os.path.isdir(path):
+                os.mkdir(path)
+            from tvb_scripts.datatypes.head import Head
+            if isinstance(datatype, Head):
+                path = os.path.join(path, datatype.title)
+                if not os.path.isdir(path):
+                    os.mkdir(path)
+                path = os.path.join(path, "Head.h5")
+            else:
+                path = os.path.join(path, datatype.title + ".h5")
+            path = change_filename_or_overwrite(path, self.force_overwrite)
+            h5.store(datatype, path, recursive)
+        return path

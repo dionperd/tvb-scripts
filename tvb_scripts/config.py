@@ -28,7 +28,8 @@ class InputConfig(object):
         # or else, try to find tvb_data module
         try:
             import tvb_data
-            return os.path.dirname(tvb_data.__file__)
+            # TODO: Create a default example Head in tvb-data
+            return os.path.join(os.path.dirname(tvb_data.__file__), "berlinSubjects", "QL_20120814")
         except ImportError:
             return self._base_input
 

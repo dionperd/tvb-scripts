@@ -174,7 +174,8 @@ class BasePlotter(object):
         for ii, (xy, tick, ntick, ind_red, show, lbls, rot) in enumerate(zip(["x", "y"], ticks, nticks, indices_red,
                                                                       [show_x_labels, show_y_labels], labels, [90, 0])):
             if show:
-                labels[ii] = generate_region_labels(len(tick), numpy.array(lbls)[tick], ". ", self.print_regions_indices, tick)
+                labels[ii] = \
+                    generate_region_labels(len(tick), numpy.array(lbls)[tick], ". ", self.print_regions_indices, tick)
                 # labels[ii] = numpy.array(["%d. %s" % l for l in zip(tick, lbls[tick])])
                 getattr(pyplot, xy + "ticks")(numpy.array(range(ntick)), labels[ii], rotation=rot)
             else:
