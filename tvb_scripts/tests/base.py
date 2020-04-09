@@ -13,23 +13,34 @@ from tvb_scripts.datatypes.head import Head
 class BaseTest(object):
     config = Config(output_base=os.path.join(os.getcwd(), "test_out"))
 
+    def _prepare_connectivity(self):
+        self.connectivity = Connectivity(weights=numpy.array([[0.0, 2.0, 3.0, 4.0],
+                                                              [2.0, 0.0, 2.0, 3.0],
+                                                              [3.0, 2.0, 0.0, 1.0],
+                                                              [4.0, 3.0, 1.0, 0.0]]),
+                                         tract_lengths=numpy.array([[0.0, 2.0, 3.0, 4.0],
+                                                                    [2.0, 0.0, 2.0, 3.0],
+                                                                    [3.0, 2.0, 0.0, 1.0],
+                                                                    [4.0, 3.0, 1.0, 0.0]]),
+                                         region_labels=numpy.array(["a", "b", "c", "d"]),
+                                         centres=numpy.array([1.0, 2.0, 3.0, 4.0]),
+                                         areas=numpy.array([1.0, 2.0, 3.0, 4.0]))
+        return self.connectivity
+
     def _prepare_dummy_head_from_dummy_attrs(self):
 
-        dummy_connectivity = Connectivity(weights=numpy.array([[1.0, 2.0, 3.0], [2.0, 3.0, 1.0], [3.0, 2.0, 1.0]]),
-                                          tract_lengths=numpy.array([[4, 5, 6], [5, 6, 4], [6, 4, 5]]),
-                                          region_labels=numpy.array(["a", "b", "c"]),
-                                          centres=numpy.array([1.0, 2.0, 3.0]),
-                                          areas=numpy.array([1.0, 2.0, 3.0]))
-        dummy_surface = CorticalSurface(vertices=numpy.array([[1, 2, 3], [2, 3, 1], [3, 1, 2]]),
-                                        triangles=numpy.array([[0, 1, 2]]))
-        dummy_sensors = SensorsSEEG(labels=numpy.array(["sens1", "sens2"]),
-                                    locations=numpy.array([[0, 0, 0], [0, 1, 0]]))
-        dummy_projection = ProjectionSurfaceSEEG(projection_data=numpy.random.uniform(0, 1, (2, 3)))
+        self._prepare_connectivity()
 
-        return Head(connectivity=dummy_connectivity,
-                    cortical_surface=dummy_surface,
-                    seeg_sensors=dummy_sensors,
-                    seeg_projection=dummy_projection)
+        self.surface = CorticalSurface(vertices=numpy.array([[1, 2, 3], [2, 3, 1], [3, 1, 2]]),
+                                        triangles=numpy.array([[0, 1, 2]]))
+        self.sensors = SensorsSEEG(labels=numpy.array(["sens1", "sens2", "sens3"]),
+                                   locations=numpy.array([[0, 0, 0], [0, 1, 0], [0, 1, 1]]))
+        self.projection = ProjectionSurfaceSEEG(projection_data=numpy.random.uniform(0, 1, (3, 4)))
+
+        return Head(connectivity=self.connectivity,
+                    cortical_surface=self.surface,
+                    seeg_sensors=self.sensors,
+                    seeg_projection=self.projection)
 
     def _prepare_dummy_head(self):
         head = Head.from_folder(self.config.input.HEAD, eeg_projection="ProjectionMatrix")  #

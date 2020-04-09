@@ -5,8 +5,11 @@ from enum import Enum
 from copy import deepcopy
 
 import numpy
+
 from tvb_scripts.utils.log_error_utils import initialize_logger, warning
 from tvb_scripts.utils.data_structures_utils import ensure_list, is_integer, monopolar_to_bipolar
+from tvb_scripts.datatypes.base import BaseModel
+
 from tvb.basic.neotraits.api import List, Attr
 from tvb.basic.profile import TvbProfile
 from tvb.datatypes.time_series import TimeSeries as TimeSeriesTVB
@@ -67,7 +70,7 @@ def prepare_4d(data, logger):
     return data
 
 
-class TimeSeries(TimeSeriesTVB):
+class TimeSeries(TimeSeriesTVB, BaseModel):
     logger = initialize_logger(__name__)
 
     def __init__(self, data=None, **kwargs):
@@ -81,7 +84,7 @@ class TimeSeries(TimeSeriesTVB):
         labels_ordering = xrdtarr.coords.dims
         labels_dimensions = {}
         for dim in labels_ordering[1:]:
-            labels_dimensions[dim] = numpy.array(xrdtarr.coords[dim].values)
+            labels_dimensions[dim] = numpy.array(xrdtarr.coords[dim].values).tolist()
         if xrdtarr.name is not None and len(xrdtarr.name) > 0:
             kwargs.update({"title": xrdtarr.name})
         if xrdtarr.size == 0:
@@ -342,16 +345,6 @@ class TimeSeries(TimeSeriesTVB):
                        "slice_data_across_dimension_by_%s" %
                        self._index_or_label_or_slice(modes_inputs))(modes_inputs, 3, **kwargs)
 
-    # TODO: find out if there is anyway this will not cause bugs, if it is worth the trouble...
-    # def __getattr__(self, attr_name):
-    #     for dim_index in range(4):
-    #         if len(self.labels_ordering) > dim_index and \
-    #         self.labels_ordering[dim_index] in self.labels_dimensions.keys() and \
-    #         attr_name in self.labels_dimensions[self.labels_ordering[dim_index]]:
-    #             return self.slice_data_across_dimension_by_label(attr_name, dim_index)
-    #     self.logger.warn("%r object has no attribute %r" % (self.__class__.__name__, attr_name))
-    #     return None
-
     def __getitem__(self, slice_tuple):
         return self.data[self._process_slice_tuple(slice_tuple)]
 
@@ -477,6 +470,12 @@ class TimeSeries(TimeSeriesTVB):
                 self.start_time = self.time[0]
             if len(self.time) > 1:
                 self.sample_period = numpy.mean(numpy.diff(self.time))
+        for key, value in self.labels_dimensions.items():
+            self.labels_dimensions[key] = list(value)
+        self.labels_ordering = list(self.labels_ordering)
+
+    def to_tvb_instance(self, datatype=TimeSeriesTVB, **kwargs):
+        return super(TimeSeries, self).to_tvb_instance(datatype, **kwargs)
 
 
 class TimeSeriesBrain(TimeSeries):
@@ -503,6 +502,9 @@ class TimeSeriesRegion(TimeSeriesBrain, TimeSeriesRegionTVB):
     def region_labels(self):
         return self.space_labels
 
+    def to_tvb_instance(self, **kwargs):
+        return super(TimeSeriesRegion, self).to_tvb_instance(TimeSeriesRegionTVB, **kwargs)
+
 
 class TimeSeriesSurface(TimeSeriesBrain, TimeSeriesSurfaceTVB):
     labels_ordering = List(of=str, default=(TimeSeriesDimensions.TIME.value, TimeSeriesDimensions.VARIABLES.value,
@@ -514,6 +516,9 @@ class TimeSeriesSurface(TimeSeriesBrain, TimeSeriesSurfaceTVB):
     def surface_labels(self):
         return self.space_labels
 
+    def to_tvb_instance(self, **kwargs):
+        return super(TimeSeriesSurface, self).to_tvb_instance(TimeSeriesSurfaceTVB, **kwargs)
+
 
 class TimeSeriesVolume(TimeSeries, TimeSeriesVolumeTVB):
     labels_ordering = List(of=str, default=(TimeSeriesDimensions.TIME.value, TimeSeriesDimensions.X.value,
@@ -524,6 +529,9 @@ class TimeSeriesVolume(TimeSeries, TimeSeriesVolumeTVB):
     @property
     def volume_labels(self):
         return self.space_labels
+
+    def to_tvb_instance(self, **kwargs):
+        return super(TimeSeriesVolume, self).to_tvb_instance(TimeSeriesVolumeTVB, **kwargs)
 
 
 class TimeSeriesSensors(TimeSeries):
@@ -556,6 +564,9 @@ class TimeSeriesEEG(TimeSeriesSensors, TimeSeriesEEGTVB):
     def EEGsensor_labels(self):
         return self.space_labels
 
+    def to_tvb_instance(self, **kwargs):
+        return super(TimeSeriesEEG, self).to_tvb_instance(TimeSeriesEEGTVB, **kwargs)
+
 
 class TimeSeriesMEG(TimeSeriesSensors, TimeSeriesMEGTVB):
     title = Attr(str, default="MEG Time Series")
@@ -569,6 +580,9 @@ class TimeSeriesMEG(TimeSeriesSensors, TimeSeriesMEGTVB):
     def MEGsensor_labels(self):
         return self.space_labels
 
+    def to_tvb_instance(self, **kwargs):
+        return super(TimeSeriesMEG, self).to_tvb_instance(TimeSeriesMEGTVB, **kwargs)
+
 
 class TimeSeriesSEEG(TimeSeriesSensors, TimeSeriesSEEGTVB):
     title = Attr(str, default="SEEG Time Series")
@@ -581,6 +595,9 @@ class TimeSeriesSEEG(TimeSeriesSensors, TimeSeriesSEEGTVB):
     @property
     def SEEGsensor_labels(self):
         return self.space_labels
+
+    def to_tvb_instance(self, **kwargs):
+        return super(TimeSeriesSEEG, self).to_tvb_instance(TimeSeriesSEEGTVB, **kwargs)
 
 
 TimeSeriesDict = {TimeSeries.__name__: TimeSeries,

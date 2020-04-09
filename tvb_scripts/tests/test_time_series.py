@@ -15,8 +15,7 @@ class TestTimeseries(BaseTest):
 
     def test_timeseries_2D(self):
         data, start_time, sample_period, sample_period_unit = self._prepare_dummy_time_series(2)
-        ts_from_2D = TimeSeries(data, labels_dimensions={TimeSeriesDimensions.SPACE.value:
-                                                                  numpy.array(["r1", "r2", "r3"])},
+        ts_from_2D = TimeSeries(data, labels_dimensions={TimeSeriesDimensions.SPACE.value: ["r1", "r2", "r3"]},
                                 start_time=start_time, sample_period=sample_period,
                                 sample_period_unit=sample_period_unit)
         assert ts_from_2D.data.ndim == 4
@@ -35,9 +34,8 @@ class TestTimeseries(BaseTest):
         ts_r2 = ts_from_2D.get_subspace_by_label(["r2"])
         assert ts_r2.data.ndim == 4
         assert ts_r2.data.shape == (3, 1, 1, 1)
-        assert ts_r2.labels_dimensions[TimeSeriesDimensions.SPACE.value] == numpy.array(["r2"])
-        assert ts_r2.get_subspace_by_label(["r2"]).labels_dimensions[TimeSeriesDimensions.SPACE.value] == \
-               numpy.array(["r2"])
+        assert ts_r2.labels_dimensions[TimeSeriesDimensions.SPACE.value] == ["r2"]
+        assert ts_r2.get_subspace_by_label(["r2"]).labels_dimensions[TimeSeriesDimensions.SPACE.value] == ["r2"]
 
         with pytest.raises(ValueError):
             ts_r2.get_subspace_by_label(["r1"])
@@ -49,9 +47,8 @@ class TestTimeseries(BaseTest):
         ts_r2_idx = ts_r2r3_idx.get_subspace_by_index([0])
         assert ts_r2_idx.data.ndim == 4
         assert ts_r2_idx.data.shape == (3, 1, 1, 1)
-        assert ts_r2_idx.labels_dimensions[TimeSeriesDimensions.SPACE.value] == numpy.array(["r2"])
-        assert ts_r2_idx.get_subspace_by_index([0]).labels_dimensions[TimeSeriesDimensions.SPACE.value] == \
-               numpy.array(["r2"])
+        assert ts_r2_idx.labels_dimensions[TimeSeriesDimensions.SPACE.value] == ["r2"]
+        assert ts_r2_idx.get_subspace_by_index([0]).labels_dimensions[TimeSeriesDimensions.SPACE.value] == ["r2"]
 
         with pytest.raises(IndexError):
             ts_r2_idx.get_subspace_by_index([2])
@@ -62,15 +59,14 @@ class TestTimeseries(BaseTest):
         ts_time_window = ts_from_2D.get_time_window(1, 2)
         assert ts_time_window.data.ndim == 4
         assert ts_time_window.data.shape == (1, 1, 3, 1)
-        assert numpy.array_equal(ts_time_window.labels_dimensions[TimeSeriesDimensions.SPACE.value],
-                                 numpy.array(["r1", "r2", "r3"]))
+        assert numpy.array_equal(ts_time_window.labels_dimensions[TimeSeriesDimensions.SPACE.value], ["r1", "r2", "r3"])
         assert ts_time_window.start_time == 0.01
 
         ts_time_window_units = ts_from_2D.get_time_window_by_units(0.01, 0.02)
         assert ts_time_window_units.data.ndim == 4
         assert ts_time_window_units.data.shape == (1, 1, 3, 1)
         assert numpy.array_equal(ts_time_window_units.labels_dimensions[TimeSeriesDimensions.SPACE.value],
-                                 numpy.array(["r1", "r2", "r3"]))
+                                 ["r1", "r2", "r3"])
         assert ts_time_window_units.start_time == 0.01
 
         with pytest.raises(IndexError):
@@ -85,8 +81,8 @@ class TestTimeseries(BaseTest):
     def test_timeseries_3D(self):
         data, start_time, sample_period, sample_period_unit = self._prepare_dummy_time_series(3)
         ts_3D = TimeSeries(data,
-                           labels_dimensions={TimeSeriesDimensions.SPACE.value: numpy.array([]),
-                                             TimeSeriesDimensions.VARIABLES.value: numpy.array([])},
+                           labels_dimensions={TimeSeriesDimensions.SPACE.value: [],
+                                             TimeSeriesDimensions.VARIABLES.value: []},
                            start_time=start_time, sample_period=sample_period,
                            sample_period_unit=sample_period_unit)
         assert ts_3D.data.ndim == 4
@@ -95,9 +91,8 @@ class TestTimeseries(BaseTest):
     def test_timeseries_data_access(self):
         data, start_time, sample_period, sample_period_unit = self._prepare_dummy_time_series(3)
         ts = TimeSeries(data,
-                        labels_dimensions={TimeSeriesDimensions.SPACE.value: numpy.array(["r1", "r2", "r3",]),
-                                           TimeSeriesDimensions.VARIABLES.value: numpy.array(["sv1", "sv2",
-                                                                                              "sv3", "sv4"])},
+                        labels_dimensions={TimeSeriesDimensions.SPACE.value: ["r1", "r2", "r3",],
+                                           TimeSeriesDimensions.VARIABLES.value: ["sv1", "sv2","sv3", "sv4"]},
                         start_time=start_time, sample_period=sample_period,
                         sample_period_unit=sample_period_unit)
         assert isinstance(ts.r1, TimeSeries)
@@ -176,10 +171,10 @@ class TestTimeseries(BaseTest):
     def test_timeseries_4D(self):
         data, start_time, sample_period, sample_period_unit = self._prepare_dummy_time_series(4)
         ts_4D = TimeSeries(data,
-                           labels_dimensions={TimeSeriesDimensions.SPACE.value: numpy.array(["r1", "r2", "r3", "r4"]),
-                                              TimeSeriesDimensions.VARIABLES.value: numpy.array([
+                           labels_dimensions={TimeSeriesDimensions.SPACE.value: ["r1", "r2", "r3", "r4"],
+                                              TimeSeriesDimensions.VARIABLES.value: [
                                                  PossibleVariables.X.value, PossibleVariables.Y.value,
-                                                 "sv3"])},
+                                                 "sv3"]},
                            start_time=start_time, sample_period=sample_period,
                            sample_period_unit=sample_period_unit)
         assert ts_4D.data.shape == (3, 3, 4, 4)
