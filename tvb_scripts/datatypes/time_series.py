@@ -23,15 +23,15 @@ TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 class TimeSeriesDimensions(Enum):
     TIME = "Time"
-    VARIABLES = "State Variables"
+    VARIABLES = "State Variable"
 
     SPACE = "Space"
-    REGIONS = "Regions"
-    VERTEXES = "Vertexes"
-    SENSORS = "Sensors"
+    REGIONS = "Region"
+    VERTEXES = "Vertex"
+    SENSORS = "Sensor"
 
-    SAMPLES = "Samples"
-    MODES = "Modes"
+    SAMPLES = "Sample"
+    MODES = "Mode"
 
     X = "x"
     Y = "y"
@@ -51,6 +51,9 @@ class PossibleVariables(Enum):
     EEG = "eeg"
     MEEG = "meeg"
     SEEG = "seeg"
+    X = "x"
+    Y = "y"
+    Z = "z"
 
 
 def prepare_4d(data, logger):
@@ -171,7 +174,7 @@ class TimeSeries(TimeSeriesTVB):
             except IndexError:
                 self.logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
                     dimension, label, dimension, str(data_labels)))
-                raise
+                raise IndexError
         return indices
 
     def _process_slice(self, slice_arg, idx):
@@ -315,7 +318,7 @@ class TimeSeries(TimeSeriesTVB):
     def get_subspace_by_index(self, list_of_index, **kwargs):
         return self.slice_data_across_dimension_by_index(list_of_index, 2, **kwargs)
 
-    def get_subspace_by_label(self, list_of_labels):
+    def get_subspace_by_label(self, list_of_labels, **kwargs):
         return self.slice_data_across_dimension_by_label(list_of_labels, 2, **kwargs)
 
     def get_subspace_by_slice(self, slice_arg, **kwargs):
@@ -329,7 +332,7 @@ class TimeSeries(TimeSeriesTVB):
     def get_modes_by_index(self, list_of_index, **kwargs):
         return self.slice_data_across_dimension_by_index(list_of_index, 3, **kwargs)
 
-    def get_modes_by_label(self, list_of_labels):
+    def get_modes_by_label(self, list_of_labels, **kwargs):
         return self.slice_data_across_dimension_by_label(list_of_labels, 3, **kwargs)
 
     def get_modes_by_slice(self, slice_arg, **kwargs):
@@ -431,14 +434,14 @@ class TimeSeries(TimeSeriesTVB):
         subtime_data = self.data[index_start:index_end, :, :, :]
         if subtime_data.ndim == 3:
             subtime_data = numpy.expand_dims(subtime_data, 0)
-        return self.duplicate(data=subtime_data, start_time=self._get_time_unit_for_index(index_start), **kwargs)
+        return self.duplicate(data=subtime_data, time=self.time[index_start:index_end], **kwargs)
 
     def get_time_window_by_units(self, unit_start, unit_end, **kwargs):
         end_time = self.end_time
         if unit_start < self.start_time or unit_end > end_time:
             self.logger.error("The time units are outside time series interval: [%s, %s]" %
                               (self.start_time, end_time))
-            raise ValueError
+            raise IndexError
         index_start = self._get_index_for_time_unit(unit_start)
         index_end = self._get_index_for_time_unit(unit_end)
         return self.get_time_window(index_start, index_end)
