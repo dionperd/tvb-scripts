@@ -171,6 +171,7 @@ class TimeSeries(TimeSeriesTVB):
         for label in ensure_list(labels):
             try:
                 indices.append(data_labels.index(label))
+            # TODO: force list error here to be IndexError instead of ValueError
             except IndexError:
                 self.logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
                     dimension, label, dimension, str(data_labels)))
@@ -209,7 +210,6 @@ class TimeSeries(TimeSeriesTVB):
                 step = 1
             else:
                 step = slice.step
-
                 slice.step = 1
             indices.append(list(range(start, stop, step)))
         if len(indices) == 1:
@@ -227,8 +227,7 @@ class TimeSeries(TimeSeriesTVB):
         if isinstance(slice_start, string_types) or isinstance(slice_start, float):
             slice_start = self._get_index_for_slice_label(slice_start, slice_idx)
         if isinstance(slice_stop, string_types) or isinstance(slice_stop, float):
-            # NOTE!: In case of a string slice, we consider stop included!
-            slice_stop = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
+            slice_stop = self._get_index_for_slice_label(slice_stop, slice_idx)
 
         return slice(slice_start, slice_stop, current_slice.step)
 
