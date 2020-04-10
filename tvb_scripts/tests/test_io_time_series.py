@@ -21,9 +21,9 @@ class TestIOTimeseries(BaseTest):
                              connectivity=self._prepare_connectivity())
 
         path = self.writer.write_tvb_to_h5(ts, recursive=True)
-        ts2 = TimeSeriesRegion(h5.load_with_references(path))
+        ts2 = TimeSeriesRegion.from_tvb_instance(h5.load(path, with_references=True))
         assert numpy.max(numpy.abs(ts.data - ts2.data)) < 1e-6
-        assert numpy.all(ts.variables_labels == ts2.variables_labels) < 1e-6
+        assert numpy.all(ts.variables_labels == ts2.variables_labels)
         assert numpy.all(ts.space_labels == ts2.space_labels)
         assert numpy.abs(ts.start_time - ts2.start_time) < 1e-6
         assert numpy.abs(ts.sample_period - ts2.sample_period) < 1e-6
