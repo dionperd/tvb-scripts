@@ -110,6 +110,7 @@ class FiguresConfig(object):
     SHOW_FLAG = False
     MOUSE_HOOVER = False
     MATPLOTLIB_BACKEND = "Agg"  # "Qt4Agg"
+    WEIGHTS_NORM_PERCENT = 99
     FONTSIZE = 10
     SMALL_FONTSIZE = 8
     LARGE_FONTSIZE = 12
@@ -123,6 +124,23 @@ class FiguresConfig(object):
             return self.NOTEBOOK_SIZE
         else:
             return self.LARGE_SIZE
+
+    def __init__(self, out_base=None, separate_by_run=False):
+        """
+        :param out_base: Base folder where figures should be kept
+        :param separate_by_run: Set TRUE, when you want figures to be in different files / each run
+        """
+        self._out_base = out_base or TvbProfile.current.TVB_STORAGE or os.path.join(os.getcwd(), "outputs")
+        self._separate_by_run = separate_by_run
+
+    @property
+    def FOLDER_FIGURES(self):
+        folder = os.path.join(self._out_base, "figs")
+        if self._separate_by_run:
+            folder = folder + datetime.strftime(datetime.now(), '%Y-%m-%d_%H-%M')
+        if not (os.path.isdir(folder)):
+            os.makedirs(folder)
+        return folder
 
 
 class CalculusConfig(object):
@@ -146,6 +164,7 @@ class Config(object):
     def __init__(self, head_folder=None, raw_data_folder=None, output_base=None, separate_by_run=False):
         self.input = InputConfig(head_folder, raw_data_folder)
         self.out = OutputConfig(output_base, separate_by_run)
+        self.figures = FiguresConfig(output_base, separate_by_run)
 
 
 CONFIGURED = Config()
