@@ -8,7 +8,6 @@ from tvb_scripts.config import CONFIGURED
 from tvb_scripts.utils.log_error_utils import initialize_logger, warning
 from tvb_scripts.utils.data_structures_utils import is_numeric
 from tvb_scripts.utils.file_utils import change_filename_or_overwrite
-from tvb_scripts.io.datatypes_h5 import REGISTRY
 
 from tvb.core.neocom import h5
 
