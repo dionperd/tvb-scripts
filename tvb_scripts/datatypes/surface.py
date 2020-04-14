@@ -14,14 +14,6 @@ from tvb.datatypes.surfaces import EEGCap as TVBEEGCap
 from tvb.datatypes.surfaces import FaceSurface as TVBFaceSurface
 
 
-class SurfaceH5Field(object):
-    VERTICES = "vertices"
-    TRIANGLES = "triangles"
-    VERTEX_NORMALS = "vertex_normals"
-    TRIANGLE_NORMALS = "triangle_normals"
-    VOX2RAS = "vox2ras"
-
-
 class Surface(TVBSurface, BaseModel):
 
     vox2ras = NArray(
