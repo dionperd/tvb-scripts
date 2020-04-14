@@ -92,7 +92,7 @@ class CorticalSurface(Surface, TVBCorticalSurface):
         return super(CorticalSurface, self).to_tvb_instance(TVBCorticalSurface, **kwargs)
 
 
-class SubcorticalSurface(Surface):
+class SubcorticalSurface(Surface, TVBCorticalSurface):
 
     surface_type = Attr(field_type=str, default="Subcortical Surface")
 

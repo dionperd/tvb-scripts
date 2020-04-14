@@ -20,9 +20,16 @@ from tvb.datatypes.region_mapping import RegionMapping as TVBRegionMapping
 from tvb.datatypes.region_mapping import RegionVolumeMapping as TVBRegionVolumeMapping
 from tvb.datatypes.structural import StructuralMRI as TVBStructuralMRI
 from tvb.datatypes.surfaces import Surface as TVBSurface
+from tvb.datatypes.surfaces import CorticalSurface as TVBCorticalSurface
 from tvb.datatypes.cortex import Cortex
 from tvb.datatypes.sensors import Sensors as TVBSensors
+from tvb.datatypes.sensors import SensorsEEG as TVBSensorsEEG
+from tvb.datatypes.sensors import SensorsInternal as TVBSensorsInternal
+from tvb.datatypes.sensors import SensorsMEG as TVBSensorsMEG
 from tvb.datatypes.projections import ProjectionMatrix as TVBProjectionMatrix
+from tvb.datatypes.projections import ProjectionSurfaceEEG as TVBProjectionSurfaceEEG
+from tvb.datatypes.projections import ProjectionSurfaceSEEG as TVBProjectionSurfaceSEEG
+from tvb.datatypes.projections import ProjectionSurfaceMEG as TVBProjectionSurfaceMEG
 from tvb.datatypes.projections import EEG_POLYMORPHIC_IDENTITY, SEEG_POLYMORPHIC_IDENTITY, MEG_POLYMORPHIC_IDENTITY
 from tvb.basic.neotraits.api import HasTraits, Attr
 
@@ -34,23 +41,23 @@ class Head(HasTraits):
     # TODO: find a solution with cross-references between tvb-scripts and TVB datatypes
     title = Attr(str, default="Head", required=False)
     path = Attr(str, default="path", required=False)
-    connectivity = Attr(field_type=Connectivity)
-    cortical_surface = Attr(field_type=CorticalSurface, required=False)
-    subcortical_surface = Attr(field_type=SubcorticalSurface, required=False)
-    cortical_region_mapping = Attr(field_type=CorticalRegionMapping, required=False)
-    subcortical_region_mapping = Attr(field_type=SubcorticalRegionMapping, required=False)
-    region_volume_mapping = Attr(field_type=RegionVolumeMapping, required=False)
-    local_connectivity = Attr(field_type=LocalConnectivity, required=False)
-    t1 = Attr(field_type=T1, required=False)
-    t2 = Attr(field_type=T2, required=False)
-    flair = Attr(field_type=Flair, required=False)
-    b0 = Attr(field_type=B0, required=False)
-    eeg_sensors = Attr(field_type=SensorsEEG, required=False)
-    seeg_sensors = Attr(field_type=SensorsSEEG, required=False)
-    meg_sensors = Attr(field_type=SensorsMEG, required=False)
-    eeg_projection = Attr(field_type=ProjectionSurfaceEEG, required=False)
-    seeg_projection = Attr(field_type=ProjectionSurfaceSEEG, required=False)
-    meg_projection = Attr(field_type=ProjectionSurfaceMEG, required=False)
+    connectivity = Attr(field_type=TVBConnectivity)
+    cortical_surface = Attr(field_type=TVBSurface, required=False)
+    subcortical_surface = Attr(field_type=TVBSurface, required=False)
+    cortical_region_mapping = Attr(field_type=TVBRegionMapping, required=False)
+    subcortical_region_mapping = Attr(field_type=TVBRegionMapping, required=False)
+    region_volume_mapping = Attr(field_type=TVBRegionVolumeMapping, required=False)
+    local_connectivity = Attr(field_type=TVBLocalConnectivity, required=False)
+    t1 = Attr(field_type=TVBStructuralMRI, required=False)
+    t2 = Attr(field_type=TVBStructuralMRI, required=False)
+    flair = Attr(field_type=TVBStructuralMRI, required=False)
+    b0 = Attr(field_type=TVBStructuralMRI, required=False)
+    eeg_sensors = Attr(field_type=TVBSensors, required=False)
+    seeg_sensors = Attr(field_type=TVBSensors, required=False)
+    meg_sensors = Attr(field_type=TVBSensors, required=False)
+    eeg_projection = Attr(field_type=TVBProjectionMatrix, required=False)
+    seeg_projection = Attr(field_type=TVBProjectionMatrix, required=False)
+    meg_projection = Attr(field_type=TVBProjectionMatrix, required=False)
     _cortex = None
 
     def __init__(self, **kwargs):
@@ -63,15 +70,19 @@ class Head(HasTraits):
             self.local_connectivity.configure()
         if isinstance(self.cortical_surface, TVBSurface):
             self.cortical_surface.configure()
+            if not isinstance(self.cortical_surface, TVBCorticalSurface):
+                warning("cortical_surface is not an instance of TVB CorticalSurface!")
             if isinstance(self.cortical_region_mapping, TVBRegionMapping):
-                self.cortical_region_mapping.connectivity = self.connectivity.to_tvb_instance()
-                self.cortical_region_mapping.surface = self.cortical_surface.to_tvb_instance()
+                self.cortical_region_mapping.connectivity = self.connectivity
+                self.cortical_region_mapping.surface = self.cortical_surface
                 self.cortical_region_mapping.configure()
         if isinstance(self.subcortical_surface, TVBSurface):
             self.subcortical_surface.configure()
+            if not isinstance(self.subcortical_surface, CorticalSurface):
+                warning("cortical_surface is not an instance of SubcorticalSurface!")
             if isinstance(self.subcortical_region_mapping, TVBRegionMapping):
-                self.subcortical_region_mapping.connectivity = self.connectivity.to_tvb_instance()
-                self.subcortical_region_mapping.surface = self.subcortical_surface.to_tvb_instance()
+                self.subcortical_region_mapping.connectivity = self.connectivity
+                self.subcortical_region_mapping.surface = self.subcortical_surface
                 self.subcortical_region_mapping.configure()
         structural = None
         for s_type in ["b0", "flair", "t2", "t1"]:
@@ -84,18 +95,25 @@ class Head(HasTraits):
                 self.region_volume_mapping.connectivity = self.connectivity
                 self.region_volume_mapping.volume = structural.volume
                 self.region_volume_mapping.configure()
-        for s_type, p_type in zip(["eeg", "seeg", "meg"],
-                                  [EEG_POLYMORPHIC_IDENTITY, SEEG_POLYMORPHIC_IDENTITY, MEG_POLYMORPHIC_IDENTITY]):
-            sensor = "%s_sensors" % s_type
-            sensors = getattr(self, sensor)
+        for s_type, p_type, s_datatype, p_datatype\
+                in zip(["eeg", "seeg", "meg"],
+                       [EEG_POLYMORPHIC_IDENTITY, SEEG_POLYMORPHIC_IDENTITY, MEG_POLYMORPHIC_IDENTITY],
+                       [TVBSensorsEEG, TVBSensorsInternal, TVBSensorsMEG],
+                       [TVBProjectionSurfaceEEG, TVBProjectionSurfaceSEEG, TVBProjectionSurfaceMEG]):
+            sensor_name = "%s_sensors" % s_type
+            sensors = getattr(self, sensor_name)
             if isinstance(sensors, TVBSensors):
                 sensors.configure()
-                projection = "%s_projection" % s_type
-                projection = getattr(self, projection)
+                if not isinstance(sensors, s_datatype):
+                    warning("%s is not an instance of TVB %s!" % (sensor_name, s_datatype.__name__))
+                projection_name = "%s_projection" % s_type
+                projection = getattr(self, projection_name)
                 if isinstance(projection, TVBProjectionMatrix):
-                    projection.sensors = sensors.to_tvb_instance()
+                    projection.sensors = sensors
+                    if not isinstance(projection, p_datatype):
+                        warning("%s is not an instance of TVB %s!" % (projection_name, p_datatype.__name__))
                     if isinstance(self.surface, Surface):
-                        projection.sources = self.surface.to_tvb_instance()
+                        projection.sources = self.surface
                     projection.projection_type = p_type
                     projection.configure()
 
