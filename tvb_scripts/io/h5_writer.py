@@ -7,16 +7,17 @@ import numpy
 
 from tvb_scripts.config import CONFIGURED
 from tvb_scripts.io.datatypes_h5 import REGISTRY
-from tvb_scripts.utils.log_error_utils import initialize_logger, warning
+
+from tvb.core.neocom import h5
+from tvb_scripts.utils.log_error_utils import warning, initialize_logger
 from tvb_scripts.utils.data_structures_utils import is_numeric
 from tvb_scripts.utils.file_utils import change_filename_or_overwrite
 
-from tvb.core.neocom import h5
-
 
 class H5Writer(object):
-    logger = initialize_logger(__name__)
+
     config = CONFIGURED
+    logger = initialize_logger(__name__)
     H5_TYPE_ATTRIBUTE = "Type"
     H5_SUBTYPE_ATTRIBUTE = "Subtype"
     H5_VERSION_ATTRIBUTE = "Version"
@@ -220,7 +221,14 @@ class H5Writer(object):
         else:
             if not os.path.isdir(path):
                 os.mkdir(path)
-            path = os.path.join(path, datatype.title + ".h5")
+            from tvb_scripts.datatypes.head import Head
+            if isinstance(datatype, Head):
+                path = os.path.join(path, datatype.title)
+                if not os.path.isdir(path):
+                    os.mkdir(path)
+                path = os.path.join(path, "Head.h5")
+            else:
+                path = os.path.join(path, datatype.title + ".h5")
             path = change_filename_or_overwrite(path, self.force_overwrite)
             h5.store(datatype, path, recursive)
         return path

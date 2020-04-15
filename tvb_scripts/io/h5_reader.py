@@ -8,6 +8,7 @@ from tvb_scripts.io.h5_writer import H5Writer
 
 
 class H5Reader(object):
+
     logger = initialize_logger(__name__)
 
     H5_TYPE_ATTRIBUTE = H5Writer().H5_TYPE_ATTRIBUTE
