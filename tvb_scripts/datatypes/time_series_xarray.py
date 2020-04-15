@@ -1,47 +1,16 @@
 # -*- coding: utf-8 -*-
-#
-#
-#  TheVirtualBrain-Scientific Package. This package holds all simulators, and 
-# analysers necessary to run brain-simulations. You can use it stand alone or
-# in conjunction with TheVirtualBrain-Framework Package. See content of the
-# documentation-folder for more details. See also http://www.thevirtualbrain.org
-#
-# (c) 2012-2017, Baycrest Centre for Geriatric Care ("Baycrest") and others
-#
-# This program is free software: you can redistribute it and/or modify it under the
-# terms of the GNU General Public License as published by the Free Software Foundation,
-# either version 3 of the License, or (at your option) any later version.
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-# PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-# You should have received a copy of the GNU General Public License along with this
-# program.  If not, see <http://www.gnu.org/licenses/>.
-#
-#
-#   CITATION:
-# When using The Virtual Brain for scientific publications, please cite it as follows:
-#
-#   Paula Sanz Leon, Stuart A. Knock, M. Marmaduke Woodman, Lia Domide,
-#   Jochen Mersmann, Anthony R. McIntosh, Viktor Jirsa (2013)
-#       The Virtual Brain: a simulator of primate brain network dynamics.
-#   Frontiers in Neuroinformatics (7:10. doi: 10.3389/fninf.2013.00010)
-#
-#
 
-"""
-The TimeSeries datatypes.
-
-.. moduleauthor:: Stuart A. Knock <Stuart@tvb.invalid>
-
-"""
 from copy import deepcopy
-from six import string_types
-import xarray as xr
+
 import numpy as np
-from tvb.datatypes import sensors, surfaces, volumes, region_mapping, connectivity
-from tvb.basic.neotraits.api import HasTraits, Attr, List, narray_summary_info
+import xarray as xr
+from six import string_types
+
 from tvb_scripts.datatypes.time_series import TimeSeries as TimeSeriesTVB
 from tvb_scripts.utils.data_structures_utils import is_integer
+
+from tvb.basic.neotraits.api import HasTraits, Attr, List, narray_summary_info
+from tvb.datatypes import sensors, surfaces, volumes, region_mapping, connectivity
 
 
 def prepare_4d(data):
@@ -245,7 +214,7 @@ class TimeSeries(HasTraits):
                 end_time = time[-1]
                 if len(time) > 1:
                     sample_period = np.mean(np.diff(time))
-                    assert end_time == start_time + (time_length - 1) * sample_period
+                    assert np.abs(end_time - start_time + (time_length - 1) * sample_period) < 1e-6
                 else:
                     sample_period = None
                 return time, start_time, end_time, sample_period, kwargs
@@ -296,7 +265,7 @@ class TimeSeries(HasTraits):
         assert self.time[0] == self.start_time
         assert self.time[-1] == self.end_time
         if self.time_length > 1:
-            assert self.sample_period == (self.end_time - self.start_time) / (self.time_length - 1)
+            assert np.abs(self.sample_period - (self.end_time - self.start_time) / (self.time_length - 1)) < 1e-6
 
     def _configure_labels(self):
         for i_dim in range(1, self.nr_dimensions):
@@ -380,7 +349,7 @@ class TimeSeries(HasTraits):
 
     def _assert_array_indices(self, slice_tuple):
         if is_integer(slice_tuple) or isinstance(slice_tuple, string_types):
-            return ([slice_tuple], )
+            return ([slice_tuple],)
         else:
             if isinstance(slice_tuple, slice):
                 slice_tuple = (slice_tuple,)
@@ -569,9 +538,9 @@ class TimeSeries(HasTraits):
                 outputs.append(self[:, var].plot_timeseries(**kwargs))
             return outputs
         if np.any([s < 2 for s in self.shape[1:]]):
-            if self.shape[1] == 1:   # only one variable
+            if self.shape[1] == 1:  # only one variable
                 figname = kwargs.pop("figname", "%s" % (self.title + "Time Series")) + ": " \
-                              + self.labels_dimensions[self.labels_ordering[1]][0]
+                          + self.labels_dimensions[self.labels_ordering[1]][0]
                 kwargs["figname"] = figname
             return self.plot_line(**kwargs)
         else:
