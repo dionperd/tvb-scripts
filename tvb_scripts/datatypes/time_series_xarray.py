@@ -18,11 +18,19 @@ from tvb_scripts.datatypes.time_series import TimeSeriesSEEG as TimeSeriesSEEGTV
 from tvb_scripts.datatypes.time_series import TimeSeriesMEG as TimeSeriesMEGTVB
 from tvb_scripts.datatypes.time_series import prepare_4d
 
-from tvb.basic.neotraits.api import HasTraits, Attr, List, narray_summary_info
+from tvb.basic.neotraits.api import HasTraits, Attr, Float, List, narray_summary_info
 from tvb.datatypes import sensors, surfaces, volumes, region_mapping, connectivity
 
 
 logger = initialize_logger(__name__)
+
+
+def coords_to_dict(coords):
+    d = {}
+    for key, val in zip(list(coords.keys()),
+                        list([value.values for value in coords.values()])):
+        d[key] = val
+    return d
 
 
 class TimeSeries(HasTraits):
@@ -37,7 +45,17 @@ class TimeSeries(HasTraits):
         label="Dimension Names",
         doc="""List of strings representing names of each data dimension""")
 
-    title = Attr(str)
+    title = Attr(str, default="Time Series")
+
+    start_time = Float(label="Start Time")
+
+    sample_period = Float(label="Sample period", default=1.0)
+
+    # Specify the measure unit for sample period (e.g sec, msec, usec, ...)
+    sample_period_unit = Attr(
+        field_type=str,
+        label="Sample Period Measure Unit",
+        default="ms")
 
     @property
     def data(self):
@@ -91,13 +109,6 @@ class TimeSeries(HasTraits):
         return self._data.coords[self._data.dims[0]].values
 
     @property
-    def start_time(self):
-        try:
-            return self.time[0]
-        except:
-            return None
-
-    @property
     def end_time(self):
         try:
             return self.time[-1]
@@ -112,27 +123,11 @@ class TimeSeries(HasTraits):
             return None
 
     @property
-    def sample_period(self):
-        try:
-            return np.mean(np.diff(self.time))
-        except:
-            return None
-
-    @property
     def sample_rate(self):
         try:
             return 1.0 / self.sample_period
         except:
             return None
-
-    # xarrays have a attrs dict with useful attributes
-
-    @property
-    def sample_period_unit(self):
-        try:
-            return self._data.attrs["sample_period_unit"]
-        except:
-            return ""
 
     @property
     def time_unit(self):
@@ -152,11 +147,7 @@ class TimeSeries(HasTraits):
 
     @property
     def labels_dimensions(self):
-        d = {}
-        for key, val in zip(list(self._data.coords.keys()),
-                            list([value.values for value in self._data.coords.values()])):
-            d[key] = val
-        return d
+        return coords_to_dict(self._data.coords)
 
     @property
     def space_labels(self):
@@ -186,33 +177,24 @@ class TimeSeries(HasTraits):
             setattr(self._data, "coords", value)
         elif name == "time":
             self._data.coords[self._data.dims[0]] = value
-        elif name == "start_time":
-            self._data.coords[self._data.dims[0]][0] = value
-        elif name == "sample_period":
-            self._data.attrs["sample_period"] = value
-        elif name == "sample_period_unit":
-            self._data.attrs["sample_period_unit"] = value
         else:
             super(TimeSeries, self).__setattr__(name, value)
-
-    def duplicate(self, **kwargs):
-        # Since all labels are internal to xarray,
-        # it suffices to pass a new (e.g., sliced) xarray _data as kwarg
-        # for all labels to be set correctly (and confirmed by the call to configure(),
-        # whereas any other attributes of TimeSeries will be copied
-        duplicate = deepcopy(self)
-        for attr, value in kwargs.items():
-            setattr(duplicate, attr, value)
-        duplicate.configure()
-        return duplicate
 
     def from_xarray_DataArray(self, xarr, **kwargs):
         # ...or as args
         # including a xr.DataArray or None
-        self._data = xr.DataArray(xarr.values,
-                                  dims=kwargs.pop("dims", kwargs.pop("labels_ordering", None)),
-                                  coords=kwargs.pop("coords", kwargs.pop("labels_dimensions", None)))
-        self._data.attrs = kwargs
+        data = kwargs.pop("data", xarr.values)
+        dims = kwargs.pop("dims", kwargs.pop("labels_ordering", xarr.dims))
+        coords = kwargs.pop("coords", kwargs.pop("labels_dimensions", coords_to_dict(xarr.coords)))
+        attrs = kwargs.pop("attrs", None)
+        time = kwargs.pop("time", coords.pop(dims[0], None))
+        if time is not None:
+            kwargs['start_time'] = kwargs.pop('start_time', time[0])
+            kwargs['sample_period'] = kwargs.pop('sample_period', np.diff(time).mean())
+            coords[dims[0]] = time
+        else:
+            kwargs['start_time'] = kwargs.pop('start_time', 0.0)
+        self._data = xr.DataArray(data=data, dims=dims, coords=coords, attrs=attrs)
         super(TimeSeries, self).__init__(**kwargs)
 
     def from_TVB_time_series(self, ts, **kwargs):
@@ -225,23 +207,31 @@ class TimeSeries(HasTraits):
             id = labels_ordering.index(label)
             if ts.shape[id] != len(dimensions):
                 labels_dimensions[label] = np.arange(ts.shape[id]).astype("i")
-        kwargs["sample_period_unit"] = getattr(ts, "sample_period_unit", kwargs.pop('sample_period_unit', ""))
+        self.start_time = getattr(ts, "start_time", kwargs.pop('start_time', ts.time[0]))
+        self.sample_period = getattr(ts, "sample_period", kwargs.pop('sample_period', np.diff(ts.time).mean()))
+        self.sample_period_unit = getattr(ts, "sample_period_unit",
+                                          kwargs.pop('sample_period_unit', self.__class__.sample_period_unit.default))
+        self.title = getattr(ts, "title", kwargs.pop('title', self.__class__.title.default))
         self._data = xr.DataArray(ts.data,
                                   dims=labels_ordering,
                                   coords=labels_dimensions,
-                                  name=name, attrs=kwargs)
+                                  name=name, attrs=kwargs.pop("attrs", None))
+        super(TimeSeries, self).__init__(**kwargs)
 
     def from_numpy(self, data, **kwargs):
         # We have to infer time and labels inputs from kwargs
-        data = prepare_4d(data)
-        time, start_time, end_time, sample_period, kwargs = self._configure_input_time(data, **kwargs)
+        data = prepare_4d(data, logger)
+        time, self.start_time, end_time, self.sample_period, kwargs = self._configure_input_time(data, **kwargs)
         labels_ordering, labels_dimensions, kwargs = self._configure_input_labels(**kwargs)
         if time is not None:
             if labels_dimensions is None:
                 labels_dimensions = {}
             labels_dimensions[labels_ordering[0]] = time
+        self.sample_period_unit = kwargs.pop('sample_period_unit', self.__class__.sample_period_unit.default)
+        self.title = kwargs.pop('title', self.__class__.title.default)
         self._data = xr.DataArray(data, dims=labels_ordering, coords=labels_dimensions,
-                                  name=self.__class__.__name__, attrs=kwargs)
+                                  name=self.__class__.__name__, attrs=kwargs.pop("attrs", None))
+        super(TimeSeries, self).__init__(**kwargs)
 
     def _configure_input_time(self, data, **kwargs):
         # Method to initialise time attributes
@@ -253,13 +243,13 @@ class TimeSeries(HasTraits):
         time_length = data.shape[0]
         if time_length > 0:
             if time is None:
-                if start_time is not None and sample_period is not None:
-                    end_time = start_time + (time_length - 1) * sample_period
-                    time = np.arange(start_time, end_time + sample_period, sample_period)
-                    return time, start_time, end_time, sample_period, kwargs
-                else:
-                    raise ValueError("Neither time vector nor start_time and/or "
-                                     "sample_period are provided as input arguments!")
+                if start_time is None:
+                    start_time = 0.0
+                if sample_period is None:
+                    sample_period = 1.0
+                end_time = start_time + (time_length - 1) * sample_period
+                time = np.arange(start_time, end_time + sample_period, sample_period)
+                return time, start_time, end_time, sample_period, kwargs
             else:
                 assert time_length == len(time)
                 start_time = time[0]
@@ -319,9 +309,9 @@ class TimeSeries(HasTraits):
 
     def __init__(self, data=None, **kwargs):
         if isinstance(data, (list, tuple)):
-            kwargs = self.from_numpy(np.array(data), **kwargs)
+            self.from_numpy(np.array(data), **kwargs)
         elif isinstance(data, np.ndarray):
-            kwargs = self.from_numpy(data, **kwargs)
+            self.from_numpy(data, **kwargs)
         elif isinstance(data, self.__class__):
             attributes = data.__dict__.items()
             attributes.update(**kwargs)
@@ -335,17 +325,34 @@ class TimeSeries(HasTraits):
             # Assuming data is an input xr.DataArray() can handle,
             if isinstance(data, dict):
                 # ...either as kwargs
-                self._data = xr.DataArray(**data)
+                self._data = xr.DataArray(**data, attrs=kwargs.pop("attrs", None))
             else:
                 # ...or as args
                 # including a xr.DataArray or None
                 self._data = xr.DataArray(data,
                                           dims=kwargs.pop("dims", kwargs.pop("labels_ordering", None)),
-                                          coords=kwargs.pop("coords", kwargs.pop("labels_dimensions", None)))
-            self._data.attrs = kwargs
+                                          coords=kwargs.pop("coords", kwargs.pop("labels_dimensions", None)),
+                                          attrs=kwargs.pop("attrs", None))
             super(TimeSeries, self).__init__(**kwargs)
-        super(TimeSeries, self).__init__()
         self.configure()
+
+    def duplicate(self, **kwargs):
+        # Since all labels are internal to xarray,
+        # it suffices to pass a new (e.g., sliced) xarray _data as kwarg
+        # for all labels to be set correctly (and confirmed by the call to configure(),
+        # whereas any other attributes of TimeSeries will be copied
+        time = kwargs.pop("time", None)
+        if time is not None:
+            kwargs['start_time'] = kwargs.pop('start_time', time[0])
+            kwargs['sample_period']  = kwargs.pop('sample_period', np.diff(time).mean())
+        else:
+            kwargs['start_time']  = kwargs.pop('start_time', self.start_time)
+            kwargs['sample_period'] = kwargs.pop('sample_period', self.sample_period)
+        kwargs['sample_period_unit'] = kwargs.pop('sample_period_unit', self.sample_period_unit)
+        kwargs['title'] = kwargs.pop('title', self.title)
+        output = self.__class__()
+        output.from_xarray_DataArray(kwargs.pop("_data", self._data), **kwargs)
+        return output
 
     def summary_info(self):
         """
@@ -540,14 +547,14 @@ class TimeSeries(HasTraits):
     def slice_data_across_dimension_by_index(self, indices, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
         indices = ensure_list(indices)
-        slices = [slice(None)] * self._data.ndims
+        slices = [slice(None)] * self._data.ndim
         slices[dim_index] = indices
         return self.duplicate(_data=self._data[tuple(slices)], **kwargs)
 
     def slice_data_across_dimension_by_label(self, labels, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
         labels = ensure_list(labels)
-        slices = [slice(None)] * self._data.ndims
+        slices = [slice(None)] * self._data.ndim
         slices[dim_index] = labels
         return self.duplicate(_data=self._data.loc[tuple(slices)], **kwargs)
 
@@ -572,10 +579,10 @@ class TimeSeries(HasTraits):
             logger.error("The time indices are outside time series interval: [%s, %s]" %
                               (0, self.data.shape[0]))
             raise IndexError
-        subtime_data = self.data[index_start:index_end, :, :, :]
+        subtime_data = self._data[index_start:index_end, :, :, :]
         if subtime_data.ndim == 3:
             subtime_data = np.expand_dims(subtime_data, 0)
-        return self.duplicate(data=subtime_data, time=self.time[index_start:index_end], **kwargs)
+        return self.duplicate(_data=subtime_data, time=self.time[index_start:index_end], **kwargs)
 
     def get_time_window_by_units(self, unit_start, unit_end, **kwargs):
         end_time = self.end_time
@@ -812,6 +819,8 @@ class TimeSeries(HasTraits):
 class TimeSeriesRegion(TimeSeries):
     """ A time-series associated with the regions of a connectivity. """
 
+    title = Attr(str, default="Region Time Series")
+
     connectivity = Attr(field_type=connectivity.Connectivity)
     region_mapping_volume = Attr(field_type=region_mapping.RegionVolumeMapping, required=False)
     region_mapping = Attr(field_type=region_mapping.RegionMapping, required=False)
@@ -844,6 +853,8 @@ class TimeSeriesRegion(TimeSeries):
 class TimeSeriesSurface(TimeSeries):
     """ A time-series associated with a Surface. """
 
+    title = Attr(str, default="Surface Time Series")
+
     surface = Attr(field_type=surfaces.CorticalSurface)
     _default_labels_ordering = List(of=str, default=("Time", "State Variable", "Vertex", "Mode"))
 
@@ -867,6 +878,8 @@ class TimeSeriesSurface(TimeSeries):
 class TimeSeriesVolume(TimeSeries):
     """ A time-series associated with a Volume. """
 
+    title = Attr(str, default="Volume Time Series")
+
     volume = Attr(field_type=volumes.Volume)
     _default_labels_ordering = List(of=str, default=("Time", "X", "Y", "Z"))
 
@@ -887,18 +900,20 @@ class TimeSeriesVolume(TimeSeries):
         return TimeSeriesVolumeTVB().from_xarray_DataArray(self._data, **kwargs)
 
 
-class SensorsTSBase(TimeSeries):
+class TimeSeriesSensors(TimeSeries):
+
+    title = Attr(str, default="Sensor Time Series")
 
     def __init__(self, data=None, **kwargs):
-        if not isinstance(data, SensorsTSBase):
+        if not isinstance(data, TimeSeriesSensors):
             self.sensors = kwargs.pop("sensors")
-        super(SensorsTSBase, self).__init__(data, **kwargs)
+        super(TimeSeriesSensors, self).__init__(data, **kwargs)
 
     def summary_info(self):
         """
         Gather scientifically interesting summary information from an instance of this datatype.
         """
-        summary = super(SensorsTSBase, self).summary_info()
+        summary = super(TimeSeriesSensors, self).summary_info()
         summary.update({"Source Sensors": self.sensors.title})
         return summary
 
@@ -906,8 +921,10 @@ class SensorsTSBase(TimeSeries):
         return datatype().from_xarray_DataArray(self._data, **kwargs)
 
 
-class TimeSeriesEEG(SensorsTSBase):
+class TimeSeriesEEG(TimeSeriesSensors):
     """ A time series associated with a set of EEG sensors. """
+
+    title = Attr(str, default="EEG Time Series")
 
     sensors = Attr(field_type=sensors.SensorsEEG)
     _default_labels_ordering = List(of=str, default=("Time", "1", "EEG Sensor", "1"))
@@ -916,8 +933,10 @@ class TimeSeriesEEG(SensorsTSBase):
         return TimeSeriesEEGTVB().from_xarray_DataArray(self._data, **kwargs)
 
 
-class TimeSeriesSEEG(SensorsTSBase):
+class TimeSeriesSEEG(TimeSeriesSensors):
     """ A time series associated with a set of Internal sensors. """
+
+    title = Attr(str, default="SEEG Time Series")
 
     sensors = Attr(field_type=sensors.SensorsInternal)
     _default_labels_ordering = List(of=str, default=("Time", "1", "sEEG Sensor", "1"))
@@ -926,8 +945,10 @@ class TimeSeriesSEEG(SensorsTSBase):
         return TimeSeriesSEEGTVB().from_xarray_DataArray(self._data, **kwargs)
 
 
-class TimeSeriesMEG(SensorsTSBase):
+class TimeSeriesMEG(TimeSeriesSensors):
     """ A time series associated with a set of MEG sensors. """
+
+    title = Attr(str, default="MEG Time Series")
 
     sensors = Attr(field_type=sensors.SensorsMEG)
     _default_labels_ordering = List(of=str, default=("Time", "1", "MEG Sensor", "1"))
