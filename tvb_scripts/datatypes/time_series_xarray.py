@@ -430,6 +430,56 @@ class TimeSeries(HasTraits):
     def _check_modes_indices(self, list_of_index):
         self._check_indices(list_of_index, 2)
 
+    def _get_index_of_label(self, labels, dimension):
+        indices = []
+        data_labels = list(self.get_dimension_labels(dimension))
+        for label in ensure_list(labels):
+            try:
+                indices.append(data_labels.index(label))
+            # TODO: force list error here to be IndexError instead of ValueError
+            except IndexError:
+                self.logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
+                    dimension, label, dimension, str(data_labels)))
+                raise IndexError
+        return indices
+
+    def _get_index_for_slice_label(self, slice_label, slice_idx):
+        return self._get_index_of_label(slice_label,
+                                        self.get_dimension_name(slice_idx))[0]
+
+    def _check_for_string_or_float_slice_indices(self, current_slice, slice_idx):
+        slice_start = current_slice.start
+        slice_stop = current_slice.stop
+
+        if isinstance(slice_start, string_types) or isinstance(slice_start, float):
+            slice_start = self._get_index_for_slice_label(slice_start, slice_idx)
+        if isinstance(slice_stop, string_types) or isinstance(slice_stop, float):
+            # NOTE!: In case of a string slice, we consider stop included!
+            slice_stop = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
+
+        return slice(slice_start, slice_stop, current_slice.step)
+
+    def _process_slice(self, this_slice, dim_index):
+        if isinstance(this_slice, slice):
+            return self._check_for_string_or_float_slice_indices(this_slice, dim_index)
+        else:
+            # If not a slice, it will be an iterable:
+            for i_slc, slc in enumerate(this_slice):
+                if isinstance(slc, string_types) or isinstance(slc, float):
+                    dim_name = self.get_dimension_name(dim_index)
+                    this_slice[i_slc] = ensure_list(self.labels_dimensions[dim_name]).index(slc)
+                else:
+                    this_slice[i_slc] = slc
+            return this_slice
+
+    def _process_slices(self, slice_tuple):
+        n_slices = len(slice_tuple)
+        assert (n_slices >= 0 and n_slices <= self.number_of_dimensions)
+        slice_list = []
+        for idx, current_slice in enumerate(slice_tuple):
+            slice_list.append(self._process_slice(current_slice, idx))
+        return tuple(slice_list)
+
     def _assert_array_indices(self, slice_tuple):
         if is_integer(slice_tuple) or isinstance(slice_tuple, string_types):
             return ([slice_tuple],)
@@ -444,52 +494,25 @@ class TimeSeries(HasTraits):
                     slice_list.append(slc)
             return tuple(slice_list)
 
-    def _get_index_for_slice_label(self, slice_label, slice_idx):
-        return self.labels_dimensions[self.labels_ordering[slice_idx]].tolist().index(slice_label)
-
-    def _check_for_string_or_float_slice_indices(self, current_slice, slice_idx):
-        slice_start = current_slice.start
-        slice_stop = current_slice.stop
-
-        if isinstance(slice_start, string_types) or isinstance(slice_start, float):
-            slice_start = self._get_index_for_slice_label(slice_start, slice_idx)
-        if isinstance(slice_stop, string_types) or isinstance(slice_stop, float):
-            # NOTE!: In case of a string slice, we consider stop included!
-            slice_stop = self._get_index_for_slice_label(slice_stop, slice_idx) + 1
-
-        return slice(slice_start, slice_stop, current_slice.step)
-
-    def _resolve_mixted_slice(self, slice_tuple):
-        slice_list = []
-        for idx, current_slice in enumerate(slice_tuple):
-            if isinstance(current_slice, slice):
-                slice_list.append(self._check_for_string_or_float_slice_indices(current_slice, idx))
-            else:
-                # If not a slice, it will be an iterable:
-                for i_slc, slc in enumerate(current_slice):
-                    if isinstance(slc, string_types) or isinstance(slc, float):
-                        current_slice[i_slc] = self.labels_dimensions[self.labels_ordering[idx]].tolist().index(slc)
-                    else:
-                        current_slice[i_slc] = slc
-                slice_list.append(current_slice)
-        return tuple(slice_list)
-
-    # Return a TimeSeries object
-    def __getitem__(self, slice_tuple):
+    def _get_item(self, slice_tuple, **kwargs):
         slice_tuple = self._assert_array_indices(slice_tuple)
         try:
             # For integer indices
-            return self.duplicate(_data=self._data[slice_tuple])
+            return self.duplicate(_data=self._data[slice_tuple], **kwargs)
         except:
             try:
                 # For label indices
                 # xrarray.DataArray.loc slices along labels
                 # Assuming that all dimensions without input labels
                 # are configured with labels of integer indices=
-                return self.duplicate(_data=self._data.loc[slice_tuple])
+                return self.duplicate(_data=self._data.loc[slice_tuple], **kwargs)
             except:
                 # Still, for a conflicting mixture that has to be resolved
-                return self.duplicate(_data=self._data[self._resolve_mixted_slice(slice_tuple)])
+                return self.duplicate(_data=self._data[self._process_slices(slice_tuple)], **kwargs)
+
+    # Return a TimeSeries object
+    def __getitem__(self, slice_tuple):
+        return self._get_item(slice_tuple)
 
     def __setitem__(self, slice_tuple, values):
         slice_tuple = self._assert_array_indices(slice_tuple)
@@ -508,47 +531,28 @@ class TimeSeries(HasTraits):
                 self._data.loc[slice_tuple] = values
             except:
                 # Still, for a conflicting mixture that has to be resolved
-                self._data[self._resolve_mixted_slice(slice_tuple)] = values
+                self._data[self._process_slices(slice_tuple)] = values
 
     def slice_data_across_dimension_by_index(self, indices, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
         indices = ensure_list(indices)
         slices = [slice(None)] * self._data.ndims
         slices[dim_index] = indices
-        return self.__class__().from_xarray_DataArray(self._data[tuple(slices)], **kwargs)
+        return self.duplicate(_data=self._data[tuple(slices)], **kwargs)
 
     def slice_data_across_dimension_by_label(self, labels, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
         labels = ensure_list(labels)
         slices = [slice(None)] * self._data.ndims
         slices[dim_index] = labels
-        return self.__class__().from_xarray_DataArray(self._data.loc[tuple(slices)], **kwargs)
+        return self.duplicate(_data=self._data.loc[tuple(slices)], **kwargs)
 
     def slice_data_across_dimension_by_slice(self, slice_arg, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
         slices = [slice(None)] * self._data.ndims
         slices[dim_index] = slice_arg
         slices = tuple(slices)
-        try:
-            return self.__class__().from_xarray_DataArray(self._data[tuple(slices)], **kwargs)
-        except:
-            try:
-                return self.__class__().from_xarray_DataArray(self._data.loc[slices], **kwargs)
-            except:
-                raise IndexError("Failed to slice across dimension %d by either index or label!" % dimension)
-
-    def _get_index_of_label(self, labels, dimension):
-        indices = []
-        data_labels = list(self.get_dimension_labels(dimension))
-        for label in ensure_list(labels):
-            try:
-                indices.append(data_labels.index(label))
-            # TODO: force list error here to be IndexError instead of ValueError
-            except IndexError:
-                self.logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
-                    dimension, label, dimension, str(data_labels)))
-                raise IndexError
-        return indices
+        return self._get_item(slices)
 
     def get_times_by_index(self, list_of_times_indices, **kwargs):
         return self.slice_data_across_dimension_by_index(list_of_times_indices, 0, **kwargs)
@@ -586,10 +590,9 @@ class TimeSeries(HasTraits):
         if new_sample_period % self.sample_period != 0:
             self.logger.error("Cannot decimate time if new time step is not a multiple of the old time step")
             raise ValueError
-
         index_step = int(new_sample_period / self.sample_period)
-        time_data = self.data[::index_step, :, :, :]
-        return self.duplicate(data=time_data, sample_period=new_sample_period, **kwargs)
+        return self.duplicate(_data=self._data[::index_step, :, :, :],
+                              sample_period=new_sample_period, **kwargs)
 
     def get_indices_for_state_variables(self, sv_labels):
         return self._get_index_of_label(sv_labels, self.get_dimension_name(1))
@@ -640,8 +643,7 @@ class TimeSeries(HasTraits):
                        self._index_or_label_or_slice(modes_inputs))(modes_inputs, 3, **kwargs)
 
     def get_sample_window(self, index_start, index_end, **kwargs):
-        return self.__class__().from_xarray_DataArray(
-                                self._data[:, :, :, index_start:index_end], **kwargs)
+        return self.duplicate(_data=self._data[:, :, :, index_start:index_end], **kwargs)
 
     # def __getattr__(self, attr_name):
     #     # We are here because attr_name is not an attribute of TimeSeries...

@@ -296,19 +296,20 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
 
         return slice(slice_start, slice_stop, current_slice.step)
 
-    def _get_string_slice_index(self, current_slice_string, slice_idx):
-        return self._get_index_for_slice_label(current_slice_string, slice_idx)
-
-    def _process_slice(self, slice_arg, idx):
-        if isinstance(slice_arg, slice):
-            return self._check_for_string_or_float_slice_indices(slice_arg, idx)
+    def _process_slice(self, this_slice, dim_index):
+        if isinstance(this_slice, slice):
+            return self._check_for_string_or_float_slice_indices(this_slice, dim_index)
         else:
-            if isinstance(slice_arg, string_types):
-                return self._get_string_slice_index(slice_arg, idx)
-            else:
-                return slice_arg
+            # If not a slice, it will be an iterable:
+            for i_slc, slc in enumerate(this_slice):
+                if isinstance(slc, string_types) or isinstance(slc, float):
+                    dim_name = self.get_dimension_name(dim_index)
+                    this_slice[i_slc] = ensure_list(self.labels_dimensions[dim_name]).index(slc)
+                else:
+                    this_slice[i_slc] = slc
+            return this_slice
 
-    def _process_slice_tuple(self, slice_tuple):
+    def _process_slices(self, slice_tuple):
         n_slices = len(slice_tuple)
         assert (n_slices >= 0 and n_slices <= self.number_of_dimensions)
         slice_list = []
@@ -337,31 +338,64 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
             return indices[0]
         return tuple(indices)
 
-    # Return a TimeSeries object
-    def __getitem__(self, slice_tuple):
-        indices = self._slices_to_indices(self._process_slice_tuple(slice_tuple))
-        self._check_time_indices(indices[0])
-        try:
-            time = self.time[indices[0]]
-            start_time = time[0]
-            sample_period = numpy.diff(time).mean()
-        except:
-            start_time = self.time[0]
-            sample_period = self.sample_period
+    def _assert_array_indices(self, slice_tuple):
+        if is_integer(slice_tuple) or isinstance(slice_tuple, string_types):
+            return ([slice_tuple],)
+        else:
+            if isinstance(slice_tuple, slice):
+                slice_tuple = (slice_tuple,)
+            slice_list = []
+            for slc in slice_tuple:
+                if is_integer(slc) or isinstance(slc, string_types):
+                    slice_list.append([slc])
+                else:
+                    slice_list.append(slc)
+            return tuple(slice_list)
+
+    def _slice_time_index(self, time_inds, **kwargs):
+        time = kwargs.pop("time", None)
+        if time is None:
+            try:
+                time = self.time[time_inds]
+            except:
+                time = self.time
+        if time is None:
+            start_time = kwargs.pop("start_time", self.start_time)
+            sample_period = kwargs.pop("sample_period", self.sample_period)
+        else:
+            start_time = kwargs.pop("start_time", time[0])
+            sample_period = kwargs.pop("sample_period", numpy.diff(time).mean())
+        return start_time, sample_period
+
+    def _slice_dimensions_labels(self, indices, **kwargs):
+        labels_ordering = kwargs.pop("labels_ordering", self.labels_ordering)
         labels_dimensions = {}
         for ii, inds in enumerate(indices):
-            jj = ii + 1
-            try:
-                labels_dimensions[self.labels_ordering[jj]] = \
-                    (numpy.array(labels_dimensions[self.labels_ordering[jj]])[inds]).tolist()
-            except:
-                pass
-        return self.duplicate(data=self.data[tuple(indices)],
-                              labels_ordering=self.labels_ordering, labels_dimensions=labels_dimensions,
-                              start_time=start_time, sample_period=sample_period)
+            if len(inds) > 0:
+                try:
+                    dim_name = labels_ordering[ii]
+                    labels_dimensions[dim_name] = \
+                        (numpy.array(labels_dimensions[dim_name])[inds]).tolist()
+                except:
+                    pass
+        labels_dimensions.update(kwargs.pop("labels_dimensions", {}))
+        return labels_ordering, labels_dimensions
+
+    def _get_item(self, slice_tuple, **kwargs):
+        slice_tuple = self._assert_array_indices(slice_tuple)
+        indices = self._slices_to_indices(self._process_slices(slice_tuple))
+        start_time, sample_period = self._slice_time_index(indices[0], **kwargs)
+        labels_ordering, labels_dimensions = self._slice_dimensions_labels(indices, **kwargs)
+        return self.duplicate(data=self.data[tuple(indices)], start_time=start_time, sample_period=sample_period,
+                              labels_ordering=labels_ordering, labels_dimensions=labels_dimensions, **kwargs)
+
+    # Return a TimeSeries object
+    def __getitem__(self, slice_tuple):
+        return self._get_item(slice_tuple)
 
     def __setitem__(self, slice_tuple, values):
-        self.data[self._process_slice_tuple(slice_tuple)] = values
+        slice_tuple = self._assert_array_indices(slice_tuple)
+        self.data[self._process_slices(slice_tuple)] = values
 
     def slice_data_across_dimension_by_index(self, indices, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
@@ -369,16 +403,17 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
         self._check_indices(indices, dim_index)
         slices = [slice(None)] * self.nr_dimensions
         slices[dim_index] = indices
-        data = self.data[tuple(slices)]
-        labels_dimensions = deepcopy(self.labels_dimensions)
-        try:
-            labels_dimensions[self.get_dimension_name(dim_index)] = \
-                (numpy.array(labels_dimensions[self.get_dimension_name(dim_index)])[indices]).tolist()
-        except:
-            self.logger.warn("Failed to get labels subset for indices %s of dimension %d!"
-                             % (str(indices), dim_index))
-            labels_dimensions[self.get_dimension_name(dim_index)] = []
-        return self.duplicate(data=data, labels_dimensions=labels_dimensions, **kwargs)
+        if dim_index == 0:
+            start_time, sample_period = self._slice_time_index(indices, **kwargs)
+        else:
+            start_time = self.start_time
+            sample_period = self.sample_period
+        all_indices = [] * self.nr_dimensions
+        all_indices[dim_index] = indices
+        labels_ordering, labels_dimensions = self._slice_dimensions_labels(all_indices, **kwargs)
+        return self.duplicate(data=self.data[tuple(slices)],
+                              start_time=start_time, sample_period=sample_period,
+                              labels_ordering=labels_ordering, labels_dimensions=labels_dimensions, **kwargs)
 
     def slice_data_across_dimension_by_label(self, labels, dimension, **kwargs):
         dim_index = self.get_dimension_index(dimension)
@@ -404,10 +439,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
             return "slice", inputs
         elif numpy.all([isinstance(inp, string_types) or is_integer(inp) for inp in inputs]):
             # resolve mixed integer and label index:
-            for ii, inp in enumerate(inputs):
-                if isinstance(inp, string_types):
-                    inputs[ii] = self._get_index_of_label(inp,
-                                             self.get_dimension_name(dim))[0]
+            inputs = self._process_slice(inputs, dim)
             return "index", inputs
         else:
             raise ValueError("input %s is not of type integer, string or slice!" % str(inputs))
@@ -423,12 +455,6 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
             return self. slice_data_across_dimension_by_slice(inputs, dim_index, **kwargs)
         else:
             raise ValueError("input %s is not of type integer, string or slice!" % str(inputs))
-
-    def get_data_from_slice(self, slice_tuple, **kwargs):
-        output_data = self.slice_data_across_dimension_by_slice(slice_tuple[0], **kwargs)
-        for this_slice in enumerate(slice_tuple[1:]):
-            output_data = output_data.slice_data_across_dimension_by_slice(this_slice, **kwargs)
-        return output_data
 
     def get_times_by_index(self, list_of_times_indices, **kwargs):
         return self.slice_data_across_dimension_by_index(list_of_times_indices, 0, **kwargs)
@@ -466,7 +492,6 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
         if new_sample_period % self.sample_period != 0:
             self.logger.error("Cannot decimate time if new time step is not a multiple of the old time step")
             raise ValueError
-
         index_step = int(new_sample_period / self.sample_period)
         time_data = self.data[::index_step, :, :, :]
         return self.duplicate(data=time_data, sample_period=new_sample_period, **kwargs)
