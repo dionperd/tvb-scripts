@@ -78,7 +78,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
     def __init__(self, data=None, **kwargs):
         super(TimeSeries, self).__init__(**kwargs)
         if data is not None:
-            self.data = prepare_4d(data, self.logger)
+            self.data = prepare_4d(data, logger)
             self.configure()
 
     @property
@@ -157,7 +157,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
         duplicate = deepcopy(self)
         for attr, value in kwargs.items():
             setattr(duplicate, attr, value)
-        duplicate.data = prepare_4d(duplicate.data, self.logger)
+        duplicate.data = prepare_4d(duplicate.data, logger)
         duplicate.configure()
         return duplicate
 
@@ -217,7 +217,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
         try:
             return self.labels_ordering[dim_index]
         except IndexError:
-            self.logger.error("Cannot access index %d of labels ordering: %s!" %
+            logger.error("Cannot access index %d of labels ordering: %s!" %
                               (int(dim_index), str(self.labels_ordering)))
 
     def get_dimension_labels(self, dimension_label_or_index):
@@ -226,7 +226,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
         try:
             return self.labels_dimensions[dimension_label_or_index]
         except KeyError:
-            self.logger.error("There are no %s labels defined for this instance: %s",
+            logger.error("There are no %s labels defined for this instance: %s",
                               (dimension_label_or_index, str(self.labels_dimensions)))
             raise
 
@@ -252,7 +252,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
         dim_index = self.get_dimension_index(dimension)
         for index in ensure_list(indices):
             if index < 0 or index > self.data.shape[dim_index]:
-                self.logger.error("Some of the given indices are out of %s range: [0, %s]",
+                logger.error("Some of the given indices are out of %s range: [0, %s]",
                                   (self.get_dimension_name(dim_index), self.data.shape[dim_index]))
                 raise IndexError
 
@@ -276,7 +276,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
                 indices.append(data_labels.index(label))
             # TODO: force list error here to be IndexError instead of ValueError
             except IndexError:
-                self.logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
+                logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
                     dimension, label, dimension, str(data_labels)))
                 raise IndexError
         return indices
@@ -467,7 +467,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
 
     def get_time_window(self, index_start, index_end, **kwargs):
         if index_start < 0 or index_end > self.data.shape[0]:
-            self.logger.error("The time indices are outside time series interval: [%s, %s]" %
+            logger.error("The time indices are outside time series interval: [%s, %s]" %
                               (0, self.data.shape[0]))
             raise IndexError
         subtime_data = self.data[index_start:index_end, :, :, :]
@@ -478,7 +478,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
     def get_time_window_by_units(self, unit_start, unit_end, **kwargs):
         end_time = self.end_time
         if unit_start < self.start_time or unit_end > end_time:
-            self.logger.error("The time units are outside time series interval: [%s, %s]" %
+            logger.error("The time units are outside time series interval: [%s, %s]" %
                               (self.start_time, end_time))
             raise IndexError
         index_start = self._get_index_for_time_unit(unit_start)
@@ -490,7 +490,7 @@ class TimeSeries(TimeSeriesTVB, BaseModel):
 
     def decimate_time(self, new_sample_period, **kwargs):
         if new_sample_period % self.sample_period != 0:
-            self.logger.error("Cannot decimate time if new time step is not a multiple of the old time step")
+            logger.error("Cannot decimate time if new time step is not a multiple of the old time step")
             raise ValueError
         index_step = int(new_sample_period / self.sample_period)
         time_data = self.data[::index_step, :, :, :]
@@ -555,7 +555,7 @@ class TimeSeriesBrain(TimeSeries):
 
     def get_source(self):
         if self.labels_ordering[1] not in self.labels_dimensions.keys():
-            self.logger.error("No state variables are defined for this instance!")
+            logger.error("No state variables are defined for this instance!")
             raise ValueError
         if PossibleVariables.SOURCE.value in self.variables_labels:
             return self.get_state_variables_by_label(PossibleVariables.SOURCE.value)

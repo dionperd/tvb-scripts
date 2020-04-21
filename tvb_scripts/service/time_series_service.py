@@ -8,10 +8,10 @@ from scipy.signal import convolve, detrend, hilbert
 
 from tvb_scripts.utils.log_error_utils import raise_value_error, initialize_logger
 from tvb_scripts.utils.data_structures_utils import ensure_list
-from tvb_scripts.utils.computations_utils import select_greater_values_array_inds, \
-    select_by_hierarchical_group_metric_clustering
-from tvb_scripts.utils.time_series_utils import abs_envelope, spectrogram_envelope, filter_data, decimate_signals, \
-    normalize_signals
+# from tvb_scripts.utils.computations_utils import select_greater_values_array_inds, \
+#     select_by_hierarchical_group_metric_clustering
+from tvb_scripts.utils.time_series_utils import abs_envelope, spectrogram_envelope, filter_data, \
+    decimate_signals, normalize_signals
 from tvb_scripts.datatypes.time_series import TimeSeriesSEEG, LABELS_ORDERING
 
 
@@ -19,7 +19,6 @@ class TimeSeriesService(object):
     logger = initialize_logger(__name__)
 
     def __init__(self, logger=initialize_logger(__name__)):
-
         self.logger = logger
 
     def decimate(self, time_series, decim_ratio, **kwargs):

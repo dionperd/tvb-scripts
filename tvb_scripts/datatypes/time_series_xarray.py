@@ -6,6 +6,8 @@ import numpy as np
 import xarray as xr
 from six import string_types
 
+from tvb_scripts.utils.log_error_utils import initialize_logger
+from tvb_scripts.utils.data_structures_utils import ensure_list, is_integer
 from tvb_scripts.datatypes.time_series import TimeSeries as TimeSeriesTVB
 from tvb_scripts.datatypes.time_series import TimeSeriesRegion as TimeSeriesRegionTVB
 from tvb_scripts.datatypes.time_series import TimeSeriesSurface as TimeSeriesSurfaceTVB
@@ -15,10 +17,12 @@ from tvb_scripts.datatypes.time_series import TimeSeriesEEG as TimeSeriesEEGTVB
 from tvb_scripts.datatypes.time_series import TimeSeriesSEEG as TimeSeriesSEEGTVB
 from tvb_scripts.datatypes.time_series import TimeSeriesMEG as TimeSeriesMEGTVB
 from tvb_scripts.datatypes.time_series import prepare_4d
-from tvb_scripts.utils.data_structures_utils import ensure_list, is_integer
 
 from tvb.basic.neotraits.api import HasTraits, Attr, List, narray_summary_info
 from tvb.datatypes import sensors, surfaces, volumes, region_mapping, connectivity
+
+
+logger = initialize_logger(__name__)
 
 
 class TimeSeries(HasTraits):
@@ -379,7 +383,7 @@ class TimeSeries(HasTraits):
         try:
             return self._data.dims[dim_index]
         except IndexError:
-            self.logger.error("Cannot access index %d of labels ordering: %s!" %
+            logger.error("Cannot access index %d of labels ordering: %s!" %
                               (int(dim_index), str(self._data.dims)))
 
     def get_dimension_labels(self, dimension_label_or_index):
@@ -388,7 +392,7 @@ class TimeSeries(HasTraits):
         try:
             return self._data.coords[dimension_label_or_index]
         except KeyError:
-            self.logger.error("There are no %s labels defined for this instance: %s",
+            logger.error("There are no %s labels defined for this instance: %s",
                               (dimension_label_or_index, str(self._data.coords)))
             raise
 
@@ -414,7 +418,7 @@ class TimeSeries(HasTraits):
         dim_index = self.get_dimension_index(dimension)
         for index in ensure_list(indices):
             if index < 0 or index > self._data.shape[dim_index]:
-                self.logger.error("Some of the given indices are out of %s range: [0, %s]",
+                logger.error("Some of the given indices are out of %s range: [0, %s]",
                                   (self.get_dimension_name(dim_index), self._data.shape[dim_index]))
                 raise IndexError
 
@@ -438,7 +442,7 @@ class TimeSeries(HasTraits):
                 indices.append(data_labels.index(label))
             # TODO: force list error here to be IndexError instead of ValueError
             except IndexError:
-                self.logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
+                logger.error("Cannot access index of %s label: %s. Existing %s labels: %s" % (
                     dimension, label, dimension, str(data_labels)))
                 raise IndexError
         return indices
@@ -565,7 +569,7 @@ class TimeSeries(HasTraits):
 
     def get_time_window(self, index_start, index_end, **kwargs):
         if index_start < 0 or index_end > self.data.shape[0]:
-            self.logger.error("The time indices are outside time series interval: [%s, %s]" %
+            logger.error("The time indices are outside time series interval: [%s, %s]" %
                               (0, self.data.shape[0]))
             raise IndexError
         subtime_data = self.data[index_start:index_end, :, :, :]
@@ -576,7 +580,7 @@ class TimeSeries(HasTraits):
     def get_time_window_by_units(self, unit_start, unit_end, **kwargs):
         end_time = self.end_time
         if unit_start < self.start_time or unit_end > end_time:
-            self.logger.error("The time units are outside time series interval: [%s, %s]" %
+            logger.error("The time units are outside time series interval: [%s, %s]" %
                               (self.start_time, end_time))
             raise IndexError
         index_start = self._get_index_for_time_unit(unit_start)
@@ -588,7 +592,7 @@ class TimeSeries(HasTraits):
 
     def decimate_time(self, new_sample_period, **kwargs):
         if new_sample_period % self.sample_period != 0:
-            self.logger.error("Cannot decimate time if new time step is not a multiple of the old time step")
+            logger.error("Cannot decimate time if new time step is not a multiple of the old time step")
             raise ValueError
         index_step = int(new_sample_period / self.sample_period)
         return self.duplicate(_data=self._data[::index_step, :, :, :],
