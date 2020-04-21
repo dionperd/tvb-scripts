@@ -187,53 +187,53 @@ class TimeSeriesService(object):
     def concatenate_modes(self, time_series_list, **kwargs):
         return self.concatenate(time_series_list, 3, **kwargs)
 
-    def select_by_metric(self, time_series, metric, metric_th=None, metric_percentile=None, nvals=None):
-        selection = np.unique(select_greater_values_array_inds(metric, metric_th, metric_percentile, nvals))
-        return time_series.get_subspace_by_index(selection), selection
-
-    def select_by_power(self, time_series, power=np.array([]), power_th=None):
-        if len(power) != time_series.number_of_labels:
-            power = self.power(time_series)
-        return self.select_by_metric(time_series, power, power_th)
-
-    def select_by_hierarchical_group_metric_clustering(self, time_series, distance, disconnectivity=np.array([]),
-                                                       metric=None, n_groups=10, members_per_group=1):
-        selection = np.unique(select_by_hierarchical_group_metric_clustering(distance, disconnectivity, metric,
-                                                                             n_groups, members_per_group))
-        return time_series.get_subspace_by_index(selection), selection
-
-    def select_by_correlation_power(self, time_series, correlation=np.array([]), disconnectivity=np.array([]),
-                                    power=np.array([]), n_groups=10, members_per_group=1):
-        if correlation.shape[0] != time_series.number_of_labels:
-            correlation = self.correlation(time_series)
-        if len(power) != time_series.number_of_labels:
-            power = self.power(time_series)
-        return self.select_by_hierarchical_group_metric_clustering(time_series, 1 - correlation,
-                                                                   disconnectivity, power, n_groups, members_per_group)
-
-    def select_by_projection_power(self, time_series, projection=np.array([]),
-                                   disconnectivity=np.array([]), power=np.array([]),
-                                   n_groups=10, members_per_group=1):
-        if len(power) != time_series.number_of_labels:
-            power = self.power(time_series)
-        return self.select_by_hierarchical_group_metric_clustering(time_series, 1 - np.corrcoef(projection),
-                                                                   disconnectivity, power, n_groups, members_per_group)
-
-    def select_by_rois_proximity(self, time_series, proximity, proximity_th=None, percentile=None, n_signals=None):
-        initial_selection = range(time_series.number_of_labels)
-        selection = []
-        for prox in proximity:
-            selection += (
-                np.array(initial_selection)[select_greater_values_array_inds(prox, proximity_th,
-                                                                             percentile, n_signals)]).tolist()
-        selection = np.unique(selection)
-        return time_series.get_subspace_by_index(selection), selection
-
-    def select_by_rois(self, time_series, rois, all_labels):
-        for ir, roi in rois:
-            if not (isinstance(roi, string_types)):
-                rois[ir] = all_labels[roi]
-        return time_series.get_subspace_by_label(rois), rois
+    # def select_by_metric(self, time_series, metric, metric_th=None, metric_percentile=None, nvals=None):
+    #     selection = np.unique(select_greater_values_array_inds(metric, metric_th, metric_percentile, nvals))
+    #     return time_series.get_subspace_by_index(selection), selection
+    #
+    # def select_by_power(self, time_series, power=np.array([]), power_th=None):
+    #     if len(power) != time_series.number_of_labels:
+    #         power = self.power(time_series)
+    #     return self.select_by_metric(time_series, power, power_th)
+    #
+    # def select_by_hierarchical_group_metric_clustering(self, time_series, distance, disconnectivity=np.array([]),
+    #                                                    metric=None, n_groups=10, members_per_group=1):
+    #     selection = np.unique(select_by_hierarchical_group_metric_clustering(distance, disconnectivity, metric,
+    #                                                                          n_groups, members_per_group))
+    #     return time_series.get_subspace_by_index(selection), selection
+    #
+    # def select_by_correlation_power(self, time_series, correlation=np.array([]), disconnectivity=np.array([]),
+    #                                 power=np.array([]), n_groups=10, members_per_group=1):
+    #     if correlation.shape[0] != time_series.number_of_labels:
+    #         correlation = self.correlation(time_series)
+    #     if len(power) != time_series.number_of_labels:
+    #         power = self.power(time_series)
+    #     return self.select_by_hierarchical_group_metric_clustering(time_series, 1 - correlation,
+    #                                                                disconnectivity, power, n_groups, members_per_group)
+    #
+    # def select_by_projection_power(self, time_series, projection=np.array([]),
+    #                                disconnectivity=np.array([]), power=np.array([]),
+    #                                n_groups=10, members_per_group=1):
+    #     if len(power) != time_series.number_of_labels:
+    #         power = self.power(time_series)
+    #     return self.select_by_hierarchical_group_metric_clustering(time_series, 1 - np.corrcoef(projection),
+    #                                                                disconnectivity, power, n_groups, members_per_group)
+    #
+    # def select_by_rois_proximity(self, time_series, proximity, proximity_th=None, percentile=None, n_signals=None):
+    #     initial_selection = range(time_series.number_of_labels)
+    #     selection = []
+    #     for prox in proximity:
+    #         selection += (
+    #             np.array(initial_selection)[select_greater_values_array_inds(prox, proximity_th,
+    #                                                                          percentile, n_signals)]).tolist()
+    #     selection = np.unique(selection)
+    #     return time_series.get_subspace_by_index(selection), selection
+    #
+    # def select_by_rois(self, time_series, rois, all_labels):
+    #     for ir, roi in rois:
+    #         if not (isinstance(roi, string_types)):
+    #             rois[ir] = all_labels[roi]
+    #     return time_series.get_subspace_by_label(rois), rois
 
     def compute_seeg(self, source_time_series, sensors, projection=None, sum_mode="lin", **kwargs):
         if np.all(sum_mode == "exp"):
