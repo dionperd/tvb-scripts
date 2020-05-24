@@ -5,7 +5,7 @@ from tvb_scripts.plot.head_plotter import HeadPlotter
 from tvb_scripts.plot.time_series_plotter import TimeSeriesPlotter
 
 
-class Plotter(object):
+class Plotter(BasePlotter):
 
     def __init__(self, config=None):
         self.config = config
