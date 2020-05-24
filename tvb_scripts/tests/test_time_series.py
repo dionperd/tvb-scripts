@@ -4,6 +4,7 @@ import pytest
 from tvb_scripts.tests.base import BaseTest
 from tvb_scripts.datatypes.time_series import TimeSeries, TimeSeriesDimensions, PossibleVariables
 from tvb_scripts.datatypes.time_series_xarray import TimeSeries as TimeSeriesX
+# from tvb.contrib.scripts.datatypes.time_series_xarray import TimeSeries as TimeSeriesX
 
 
 class TestTimeseries(BaseTest):
