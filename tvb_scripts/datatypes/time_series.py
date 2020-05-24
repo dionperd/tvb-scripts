@@ -24,7 +24,7 @@ from tvb.datatypes.sensors import Sensors, SensorsEEG, SensorsMEG, SensorsIntern
 TvbProfile.set_profile(TvbProfile.LIBRARY_PROFILE)
 
 
-logger = initialize_logger(__name__)
+LOG = initialize_logger(__name__)
 
 
 class TimeSeriesDimensions(Enum):
@@ -84,7 +84,7 @@ def _slice_data(data, slice_tuple):
 
 
 class TimeSeries(TimeSeriesTVB, BaseModel):
-    logger = get_logger(__name__)
+    logger = LOG
 
     def __init__(self, data=None, **kwargs):
         super(TimeSeries, self).__init__(**kwargs)
